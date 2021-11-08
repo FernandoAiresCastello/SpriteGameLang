@@ -14,13 +14,33 @@ namespace SpriteGameLang
 
             if (cmd == "MSGBOX")
             {
-                cpp.Append("_system->ShowMsgBox(");
-                cpp.Append(args[0]);
-                cpp.Append(");");
+                cpp.Append(string.Format("_system->ShowMsgBox({0});", args[0]));
             }
             else if (cmd == "EXIT")
             {
                 cpp.Append("_system->Exit();");
+            }
+            else if (cmd == "TITLE")
+            {
+                cpp.Append(string.Format("_window->SetTitle({0});", args[0]));
+            }
+            else if (cmd == "WINDOW")
+            {
+                cpp.Append(string.Format("_window->Open({0}, {1}, {2});", 
+                    args[0], args[1], args[2]));
+            }
+            else if (cmd == "HALT")
+            {
+                cpp.Append("_system->Halt();");
+            }
+            else if (cmd == "LOOP")
+            {
+                cpp.AppendLine("while (true) {");
+                cpp.AppendLine("_system->ProcessGlobalEvents();");
+            }
+            else if (cmd == "END")
+            {
+                cpp.Append("}");
             }
             else
             {
