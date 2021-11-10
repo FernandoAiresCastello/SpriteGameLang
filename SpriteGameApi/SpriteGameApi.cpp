@@ -7,8 +7,7 @@
 #include <iostream>
 #include <fstream>
 
-//=============================================================================
-
+///d Index
 class SGApiContext;
 enum class SGMsgBoxType;
 class SGUtil;
@@ -21,41 +20,32 @@ class SGImage;
 class SGImagePool;
 class SGTileset;
 
-//=============================================================================
-//	DECL :: SGPosition
-//=============================================================================
+///d SGPosition
 class SGPosition {
 public:
 	int X = 0;
 	int Y = 0;
 };
-//=============================================================================
-//	DECL :: SGUtil
-//=============================================================================
+///d SGMsgBoxType
 enum class SGMsgBoxType {
 	Info, Warning, Error
 };
+///d SGUtil
 class SGUtil {
 public:
 	static void ShowMsgBox(std::string title, std::string message, SGMsgBoxType type);
 };
-//=============================================================================
-//	DECL :: SGString
-//=============================================================================
+///d SGString
 class SGString {
 public:
 	static std::string Format(const char* fmt, ...);
 };
-//=============================================================================
-//	DECL :: SGFile
-//=============================================================================
+///d SGFile
 class SGFile {
 public:
 	static bool Exists(std::string file);
 };
-//=============================================================================
-//	DECL :: SGSystem
-//=============================================================================
+///d SGSystem
 class SGWindow;
 class SGSystem {
 public:
@@ -72,9 +62,7 @@ public:
 	std::string FileRoot = "";
 	SGWindow* Window = nullptr;
 };
-//=============================================================================
-//	DECL :: SGImage
-//=============================================================================
+///d SGImage
 class SGImage {
 public:
 	SGImage(SDL_Renderer* rend, std::string file, int transparencyKey);
@@ -85,9 +73,7 @@ public:
 	int Height = 0;
 	int TransparencyKey = 0;
 };
-//=============================================================================
-//	DECL :: SGTileset
-//=============================================================================
+///d SGTileset
 class SGTileset {
 public:
 	SGTileset(SGImage* image, int tileWidth, int tileHeight);
@@ -107,9 +93,7 @@ private:
 
 	void CalculateTilePositions();
 };
-//=============================================================================
-//	DECL :: SGWindow
-//=============================================================================
+///d SGWindow
 class SGWindow {
 public:
 	SGWindow();
@@ -139,9 +123,7 @@ private:
 	bool Full = false;
 	std::string Title = "";
 };
-//=============================================================================
-//	DECL :: SGImagePool
-//=============================================================================
+///d SGImagePool
 class SGImagePool {
 public:
 	SGImagePool();
@@ -157,9 +139,7 @@ private:
 	SDL_Renderer* Rend = nullptr;
 	std::map<std::string, SGImage*> Images;
 };
-//=============================================================================
-//	DECL :: SGApiContext
-//=============================================================================
+///d SGApiContext
 class SGApiContext {
 public:
 	SGApiContext();
@@ -189,9 +169,7 @@ public:
 	std::map<std::string, SGTileset*> Tilesets;
 };
 
-//=============================================================================
-//	IMPL :: SGApiContext
-//=============================================================================
+///i SGApiContext
 SGApiContext::SGApiContext() {
 	System = new SGSystem();
 	Window = new SGWindow();
@@ -276,9 +254,7 @@ void SGApiContext::DrawTile(std::string idTileset, int ixTile, int x, int y) {
 	Window->DrawTile(tset->Image, tset->TileWidth, tset->TileHeight, 
 		tset->GetTileXFromIndex(ixTile), tset->GetTileYFromIndex(ixTile), x, y);
 }
-//=============================================================================
-//	IMPL :: SGTileset
-//=============================================================================
+///i SGTileset
 SGTileset::SGTileset(SGImage* image, int tileWidth, int tileHeight) {
 	Image = image;
 	TileWidth = tileWidth;
@@ -315,9 +291,7 @@ int SGTileset::GetTileYFromIndex(int index) {
 
 	return -1;
 }
-//=============================================================================
-//	IMPL :: SGUtil
-//=============================================================================
+///i SGUtil
 void SGUtil::ShowMsgBox(std::string title, std::string message, SGMsgBoxType type) {
 	long icon = 0;
 	if (type == SGMsgBoxType::Info)
@@ -330,9 +304,7 @@ void SGUtil::ShowMsgBox(std::string title, std::string message, SGMsgBoxType typ
 	MessageBoxA(nullptr, message.c_str(), title.c_str(),
 		MB_OK | MB_TASKMODAL | MB_SETFOREGROUND | icon);
 }
-//=============================================================================
-//	IMPL :: SGString
-//=============================================================================
+///i SGString
 std::string SGString::Format(const char* fmt, ...) {
 	char str[1000] = { 0 };
 	va_list arg;
@@ -342,9 +314,7 @@ std::string SGString::Format(const char* fmt, ...) {
 
 	return str;
 }
-//=============================================================================
-//	IMPL :: SGFile
-//=============================================================================
+///i SGFile
 bool SGFile::Exists(std::string file) {
 	if (FILE *fp = fopen(file.c_str(), "r")) {
 		fclose(fp);
@@ -352,9 +322,7 @@ bool SGFile::Exists(std::string file) {
 	}
 	return false;
 }
-//=============================================================================
-//	IMPL :: SGImagePool
-//=============================================================================
+///i SGImagePool
 SGImagePool::SGImagePool() {
 }
 SGImagePool::~SGImagePool() {
@@ -377,9 +345,7 @@ SGImage* SGImagePool::Get(std::string id) {
 	}
 	return Images[id];
 }
-//=============================================================================
-//	IMPL :: SGImage
-//=============================================================================
+///i SGImage
 SGImage::SGImage(SDL_Renderer* rend, std::string file, int transparencyKey) {
 	if (!SGFile::Exists(file)) {
 		SGSystem::Abort("File not found: " + file);
@@ -411,9 +377,7 @@ SGImage::~SGImage() {
 	SDL_DestroyTexture(Texture);
 	Texture = nullptr;
 }
-//=============================================================================
-//	IMPL :: SGSystem
-//=============================================================================
+///i SGSystem
 SGSystem::SGSystem() {
 	Init();
 };
@@ -455,9 +419,7 @@ void SGSystem::Abort(std::string message) {
 	SDL_Quit();
 	exit(0);
 }
-//=============================================================================
-//	IMPL :: SGWindow
-//=============================================================================
+///i SGWindow
 SGWindow::SGWindow() {
 };
 SGWindow::~SGWindow() {
@@ -547,9 +509,7 @@ void SGWindow::DrawTile(SGImage* img, int tileW, int tileH, int srcX, int srcY, 
 	dst.x = dstX;	dst.y = dstY;	dst.w = tileW;	dst.h = tileH;
 	SDL_RenderCopy(Rend, img->Texture, &src, &dst);
 }
-//=============================================================================
-//	MAIN
-//=============================================================================
+///i main
 SGApiContext* _api = nullptr;
 
 int main(int argc, char* argv[]) {
