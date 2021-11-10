@@ -35,8 +35,8 @@ namespace SpriteGameLang
             else if (cmd == "WINDOW")
             {
                 cpp.Append(string.Format(
-                    "_api->OpenWindow({0}, {1}, {2}, {3}, {4});", 
-                    args[0], args[1], args[2], args[3], args[4]));
+                    "_api->OpenWindow({0}, {1}, {2}, {3});", 
+                    args[0], args[1], args[2], args[3]));
             }
             else if (cmd == "HALT")
             {
@@ -89,7 +89,7 @@ namespace SpriteGameLang
                     "_api->DrawImage({0}, {1}, {2});",
                     args[0], args[1], args[2]));
             }
-            else if (cmd == "MKTILES")
+            else if (cmd == "TILES")
             {
                 cpp.Append(string.Format(
                     "_api->MakeTileset({0}, {1}, {2}, {3});",

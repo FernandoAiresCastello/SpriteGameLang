@@ -115,6 +115,7 @@ public:
 	SGWindow();
 	~SGWindow();
 
+	void Open(int hRes, int vRes, int sizeMultiplier, bool full);
 	void Open(int hRes, int vRes, int hSize, int vSize, bool full);
 	void SetTitle(std::string title);
 	void Close();
@@ -168,7 +169,7 @@ public:
 	void ShowMsgBox(std::string message);
 	void Exit();
 	void SetWindowTitle(std::string title);
-	void OpenWindow(int hRes, int vRes, int hSize, int vSize, bool full);
+	void OpenWindow(int hRes, int vRes, int sizeMultiplier, bool full);
 	void Halt();
 	void SetFileRoot(std::string path);
 	void LoadImageFile(std::string id, std::string file);
@@ -219,8 +220,8 @@ void SGApiContext::Exit() {
 void SGApiContext::SetWindowTitle(std::string title) {
 	Window->SetTitle(title);
 }
-void SGApiContext::OpenWindow(int hRes, int vRes, int hSize, int vSize, bool full) {
-	Window->Open(hRes, vRes, hSize, vSize, full);
+void SGApiContext::OpenWindow(int hRes, int vRes, int sizeMultiplier, bool full) {
+	Window->Open(hRes, vRes, sizeMultiplier, full);
 	ImgPool->SetRenderer(Window->GetRenderer());
 }
 void SGApiContext::Halt() {
@@ -462,6 +463,10 @@ SGWindow::SGWindow() {
 SGWindow::~SGWindow() {
 	Close();
 };
+void SGWindow::Open(int hRes, int vRes, int sizeMultiplier, bool full) {
+	sizeMultiplier++;
+	Open(hRes, vRes, sizeMultiplier * hRes, sizeMultiplier * vRes, full);
+}
 void SGWindow::Open(int hRes, int vRes, int hSize, int vSize, bool full) {
 	ResWidth = hRes;
 	ResHeight = vRes;

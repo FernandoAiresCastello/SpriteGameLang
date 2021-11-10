@@ -145,7 +145,7 @@ namespace SpriteGameLang
             List<string> lines = new List<string>();
 
             foreach (string srcLine in srcLines)
-                lines.AddRange(QuotedSplit(srcLine, ":"));
+                lines.AddRange(QuotedSplit(srcLine.Trim(), ":"));
 
             return lines.ToArray();
         }
@@ -203,7 +203,7 @@ namespace SpriteGameLang
 
             if (sb.Length > 0)
             {
-                yield return sb.ToString();
+                yield return sb.ToString().Trim();
             }
         }
 
