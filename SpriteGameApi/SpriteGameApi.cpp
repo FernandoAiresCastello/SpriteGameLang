@@ -7,26 +7,37 @@
 #include <iostream>
 #include <fstream>
 
-/******************************************************************************
+//=============================================================================
 
-							   ENUMERATIONS
+class SGApiContext;
+enum class SGMsgBoxType;
+class SGUtil;
+class SGPosition;
+class SGString;
+class SGFile;
+class SGSystem;
+class SGWindow;
+class SGImage;
+class SGImagePool;
+class SGTileset;
 
-******************************************************************************/
-enum class MsgBoxType {
-	Info, Warning, Error
+//=============================================================================
+//	DECL :: SGPosition
+//=============================================================================
+class SGPosition {
+public:
+	int X = 0;
+	int Y = 0;
 };
-/******************************************************************************
-
-							CLASS DECLARATIONS
-
-******************************************************************************/
-
 //=============================================================================
 //	DECL :: SGUtil
 //=============================================================================
+enum class SGMsgBoxType {
+	Info, Warning, Error
+};
 class SGUtil {
 public:
-	static void ShowMsgBox(std::string title, std::string message, MsgBoxType type);
+	static void ShowMsgBox(std::string title, std::string message, SGMsgBoxType type);
 };
 //=============================================================================
 //	DECL :: SGString
@@ -45,6 +56,7 @@ public:
 //=============================================================================
 //	DECL :: SGSystem
 //=============================================================================
+class SGWindow;
 class SGSystem {
 public:
 	SGSystem();
@@ -56,22 +68,44 @@ public:
 	void Halt();
 	void SetFileRoot(std::string root);
 	static void Abort(std::string message);
-	std::string GetFileRoot();
 
-private:
 	std::string FileRoot = "";
+	SGWindow* Window = nullptr;
 };
 //=============================================================================
 //	DECL :: SGImage
 //=============================================================================
 class SGImage {
 public:
-	SGImage(SDL_Renderer* rend, std::string file);
+	SGImage(SDL_Renderer* rend, std::string file, int transparencyKey);
 	~SGImage();
 
 	SDL_Texture* Texture = nullptr;
-	int Width;
-	int Height;
+	int Width = 0;
+	int Height = 0;
+	int TransparencyKey = 0;
+};
+//=============================================================================
+//	DECL :: SGTileset
+//=============================================================================
+class SGTileset {
+public:
+	SGTileset(SGImage* image, int tileWidth, int tileHeight);
+	~SGTileset();
+
+	int GetTileXFromIndex(int index);
+	int GetTileYFromIndex(int index);
+
+	SGImage* Image = nullptr;
+	int TileWidth = 0;
+	int TileHeight = 0;
+	int Cols = 0;
+	int Rows = 0;
+
+private:
+	std::vector<SGPosition> TilePositions;
+
+	void CalculateTilePositions();
 };
 //=============================================================================
 //	DECL :: SGWindow
@@ -81,17 +115,24 @@ public:
 	SGWindow();
 	~SGWindow();
 
-	void Open(int width, int height, bool full);
+	void Open(int hRes, int vRes, int hSize, int vSize, bool full);
 	void SetTitle(std::string title);
 	void Close();
-	void Clear(int rgb);
+	void Clear();
 	void Update();
 	SDL_Renderer* GetRenderer();
+	void SetFullscreen(bool full);
+	void ToggleFullscreen();
 	void DrawImage(SGImage* img, int x, int y);
+	void DrawTile(SGImage* img, int tileW, int tileH, int srcX, int srcY, int dstX, int dstY);
+
+	int BackColor = 0xffffff;
 
 private:
 	SDL_Window* Wnd = nullptr;
 	SDL_Renderer* Rend = nullptr;
+	int ResWidth = 0;
+	int ResHeight = 0;
 	int WndWidth = 0;
 	int WndHeight = 0;
 	bool Full = false;
@@ -109,6 +150,8 @@ public:
 	void Load(std::string id, std::string file);
 	SGImage* Get(std::string id);
 
+	int TransparencyKey;
+
 private:
 	SDL_Renderer* Rend = nullptr;
 	std::map<std::string, SGImage*> Images;
@@ -125,24 +168,25 @@ public:
 	void ShowMsgBox(std::string message);
 	void Exit();
 	void SetWindowTitle(std::string title);
-	void OpenWindow(int width, int height, bool full);
+	void OpenWindow(int hRes, int vRes, int hSize, int vSize, bool full);
 	void Halt();
 	void SetFileRoot(std::string path);
 	void LoadImageFile(std::string id, std::string file);
 	void ProcessGlobalEvents();
-	void DrawImage(std::string id, int x, int y);
 	void UpdateWindow();
-	void ClearWindow(int rgb);
+	void SetTransparencyKey(int rgb);
+	void SetWindowBackColor(int rgb);
+	void ClearWindow();
+	void DrawImage(std::string id, int x, int y);
+	void MakeTileset(std::string idTileset, std::string idImage, int tileWidth, int tileHeight);
+	SGTileset* GetTileset(std::string id);
+	void DrawTile(std::string idTileset, int ixTile, int x, int y);
 
 	SGSystem* System = nullptr;
 	SGWindow* Window = nullptr;
 	SGImagePool* ImgPool = nullptr;
+	std::map<std::string, SGTileset*> Tilesets;
 };
-/******************************************************************************
-
-							CLASS IMPLEMENTATIONS
-
-******************************************************************************/
 
 //=============================================================================
 //	IMPL :: SGApiContext
@@ -150,17 +194,24 @@ public:
 SGApiContext::SGApiContext() {
 	System = new SGSystem();
 	Window = new SGWindow();
+	System->Window = Window;
 	ImgPool = new SGImagePool();
 }
 SGApiContext::~SGApiContext() {
 	delete ImgPool;
 	delete Window;
 	delete System;
+
+	for (auto it = Tilesets.begin(); it != Tilesets.end(); it++) {
+		delete it->second;
+		it->second = nullptr;
+	}
+	Tilesets.clear();
 }
 void SGApiContext::Test() {
 }
 void SGApiContext::ShowMsgBox(std::string message) {
-	SGUtil::ShowMsgBox("Sprite Game API", message, MsgBoxType::Info);
+	SGUtil::ShowMsgBox("Sprite Game API", message, SGMsgBoxType::Info);
 }
 void SGApiContext::Exit() {
 	System->Exit();
@@ -168,8 +219,8 @@ void SGApiContext::Exit() {
 void SGApiContext::SetWindowTitle(std::string title) {
 	Window->SetTitle(title);
 }
-void SGApiContext::OpenWindow(int width, int height, bool full) {
-	Window->Open(width, height, full);
+void SGApiContext::OpenWindow(int hRes, int vRes, int hSize, int vSize, bool full) {
+	Window->Open(hRes, vRes, hSize, vSize, full);
 	ImgPool->SetRenderer(Window->GetRenderer());
 }
 void SGApiContext::Halt() {
@@ -179,33 +230,100 @@ void SGApiContext::SetFileRoot(std::string path) {
 	System->SetFileRoot(path);
 }
 void SGApiContext::LoadImageFile(std::string id, std::string file) {
-	ImgPool->Load(id, System->GetFileRoot() + file);
+	ImgPool->Load(id, System->FileRoot + file);
 }
 void SGApiContext::ProcessGlobalEvents() {
 	System->ProcessGlobalEvents();
 }
-void SGApiContext::DrawImage(std::string id, int x, int y) {
-	SGImage* img = ImgPool->Get(id);
-	if (img != nullptr) {
-		Window->DrawImage(img, x, y);
-	}
-}
 void SGApiContext::UpdateWindow() {
 	Window->Update();
 }
-void SGApiContext::ClearWindow(int rgb) {
-	Window->Clear(rgb);
+void SGApiContext::SetTransparencyKey(int rgb) {
+	ImgPool->TransparencyKey = rgb;
+}
+void SGApiContext::SetWindowBackColor(int rgb) {
+	Window->BackColor = rgb;
+}
+void SGApiContext::ClearWindow() {
+	Window->Clear();
+}
+void SGApiContext::DrawImage(std::string id, int x, int y) {
+	SGImage* img = ImgPool->Get(id);
+	if (img) {
+		Window->DrawImage(img, x, y);
+	}
+}
+void SGApiContext::MakeTileset(std::string idTileset, std::string idImage, int tileWidth, int tileHeight) {
+	SGImage* img = ImgPool->Get(idImage);
+	if (img) {
+		SGTileset* tset = new SGTileset(img, tileWidth, tileHeight);
+		Tilesets[idTileset] = tset;
+	}
+}
+SGTileset* SGApiContext::GetTileset(std::string id) {
+	if (Tilesets.find(id) == Tilesets.end()) {
+		SGSystem::Abort("Tileset not found with id: " + id);
+		return nullptr;
+	}
+	return Tilesets[id];
+}
+void SGApiContext::DrawTile(std::string idTileset, int ixTile, int x, int y) {
+	SGTileset* tset = GetTileset(idTileset);
+	if (!tset)
+		return;
+
+	Window->DrawTile(tset->Image, tset->TileWidth, tset->TileHeight, 
+		tset->GetTileXFromIndex(ixTile), tset->GetTileYFromIndex(ixTile), x, y);
+}
+//=============================================================================
+//	IMPL :: SGTileset
+//=============================================================================
+SGTileset::SGTileset(SGImage* image, int tileWidth, int tileHeight) {
+	Image = image;
+	TileWidth = tileWidth;
+	TileHeight = tileHeight;
+	Cols = Image->Width / TileWidth;
+	Rows = Image->Height / TileHeight;
+
+	CalculateTilePositions();
+}
+SGTileset::~SGTileset() {
+}
+void SGTileset::CalculateTilePositions() {
+	TilePositions.clear();
+
+	for (int y = 0; y < Rows; y++) {
+		for (int x = 0; x < Cols; x++) {
+			SGPosition pos;
+			pos.X = x * TileWidth;
+			pos.Y = y * TileHeight;
+			TilePositions.push_back(pos);
+		}
+	}
+}
+int SGTileset::GetTileXFromIndex(int index) {
+	if (index >= 0 && index < TilePositions.size())
+		return TilePositions[index].X;
+
+	return -1;
+}
+
+int SGTileset::GetTileYFromIndex(int index) {
+	if (index >= 0 && index < TilePositions.size())
+		return TilePositions[index].Y;
+
+	return -1;
 }
 //=============================================================================
 //	IMPL :: SGUtil
 //=============================================================================
-void SGUtil::ShowMsgBox(std::string title, std::string message, MsgBoxType type) {
+void SGUtil::ShowMsgBox(std::string title, std::string message, SGMsgBoxType type) {
 	long icon = 0;
-	if (type == MsgBoxType::Info)
+	if (type == SGMsgBoxType::Info)
 		icon = MB_ICONINFORMATION;
-	else if (type == MsgBoxType::Warning)
+	else if (type == SGMsgBoxType::Warning)
 		icon = MB_ICONWARNING;
-	if (type == MsgBoxType::Error)
+	if (type == SGMsgBoxType::Error)
 		icon = MB_ICONERROR;
 
 	MessageBoxA(nullptr, message.c_str(), title.c_str(),
@@ -249,7 +367,7 @@ void SGImagePool::SetRenderer(SDL_Renderer* rend) {
 	Rend = rend;
 }
 void SGImagePool::Load(std::string id, std::string file) {
-	Images[id] = new SGImage(Rend, file);
+	Images[id] = new SGImage(Rend, file, TransparencyKey);
 }
 SGImage* SGImagePool::Get(std::string id) {
 	if (Images.find(id) == Images.end()) {
@@ -261,12 +379,13 @@ SGImage* SGImagePool::Get(std::string id) {
 //=============================================================================
 //	IMPL :: SGImage
 //=============================================================================
-SGImage::SGImage(SDL_Renderer* rend, std::string file) {
+SGImage::SGImage(SDL_Renderer* rend, std::string file, int transparencyKey) {
 	if (!SGFile::Exists(file)) {
 		SGSystem::Abort("File not found: " + file);
 		return;
 	}
 	SDL_Surface* sfc = SDL_LoadBMP(file.c_str());
+	SDL_SetColorKey(sfc, transparencyKey > 0, transparencyKey);
 	if (!sfc) {
 		SGSystem::Abort("Could not load file: " + file);
 		return;
@@ -313,6 +432,9 @@ void SGSystem::ProcessGlobalEvents() {
 	if (e.type == SDL_QUIT) {
 		Exit();
 	}
+	else if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_RETURN && SDL_GetModState() & KMOD_ALT) {
+		Window->ToggleFullscreen();
+	}
 }
 void SGSystem::Halt() {
 	while (true) {
@@ -328,12 +450,9 @@ void SGSystem::SetFileRoot(std::string root) {
 	FileRoot = root;
 }
 void SGSystem::Abort(std::string message) {
-	SGUtil::ShowMsgBox("Sprite Game API", message, MsgBoxType::Error);
+	SGUtil::ShowMsgBox("Sprite Game API", message, SGMsgBoxType::Error);
 	SDL_Quit();
 	exit(0);
-}
-std::string SGSystem::GetFileRoot() {
-	return FileRoot;
 }
 //=============================================================================
 //	IMPL :: SGWindow
@@ -343,9 +462,11 @@ SGWindow::SGWindow() {
 SGWindow::~SGWindow() {
 	Close();
 };
-void SGWindow::Open(int width, int height, bool full) {
-	WndWidth = width;
-	WndHeight = height;
+void SGWindow::Open(int hRes, int vRes, int hSize, int vSize, bool full) {
+	ResWidth = hRes;
+	ResHeight = vRes;
+	WndWidth = hSize;
+	WndHeight = vSize;
 	Full = full;
 
 	SDL_SetHint(SDL_HINT_RENDER_DRIVER, "direct3d");
@@ -358,7 +479,10 @@ void SGWindow::Open(int width, int height, bool full) {
 	Rend = SDL_CreateRenderer(Wnd, -1,
 		SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
 
-	Clear(0xffffff);
+	SDL_RenderSetLogicalSize(Rend, hRes, vRes);
+
+	Clear();
+	Update();
 	SetTitle(Title);
 	SDL_SetWindowPosition(Wnd, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 	SDL_RaiseWindow(Wnd);
@@ -374,10 +498,10 @@ void SGWindow::Close() {
 	SDL_DestroyWindow(Wnd);
 	Wnd = nullptr;
 }
-void SGWindow::Clear(int rgb) {
-	const int r = (rgb & 0xff0000) >> 16;
-	const int g = (rgb & 0x00ff00) >> 8;
-	const int b = (rgb & 0x0000ff);
+void SGWindow::Clear() {
+	const int r = (BackColor & 0xff0000) >> 16;
+	const int g = (BackColor & 0x00ff00) >> 8;
+	const int b = (BackColor & 0x0000ff);
 	SDL_SetRenderDrawColor(Rend, r, g, b, SDL_ALPHA_OPAQUE);
 	SDL_RenderClear(Rend);
 }
@@ -387,17 +511,35 @@ void SGWindow::Update() {
 SDL_Renderer* SGWindow::GetRenderer() {
 	return Rend;
 }
+void SGWindow::SetFullscreen(bool full) {
+	Uint32 fullscreenFlag = SDL_WINDOW_FULLSCREEN_DESKTOP;
+	Uint32 isFullscreen = SDL_GetWindowFlags(Wnd) & fullscreenFlag;
+
+	if ((full && isFullscreen) || (!full && !isFullscreen))
+		return;
+
+	SDL_SetWindowFullscreen(Wnd, full ? fullscreenFlag : 0);
+	SDL_ShowCursor(isFullscreen);
+}
+void SGWindow::ToggleFullscreen() {
+	Uint32 fullscreenFlag = SDL_WINDOW_FULLSCREEN_DESKTOP;
+	Uint32 isFullscreen = SDL_GetWindowFlags(Wnd) & fullscreenFlag;
+	SDL_SetWindowFullscreen(Wnd, isFullscreen ? 0 : fullscreenFlag);
+	SDL_ShowCursor(isFullscreen);
+	Update();
+}
 void SGWindow::DrawImage(SGImage* img, int x, int y) {
 	SDL_Rect src;
-	src.x = 0;
-	src.y = 0;
-	src.w = img->Width;
-	src.h = img->Height;
+	src.x = 0;	src.y = 0;	src.w = img->Width;	src.h = img->Height;
 	SDL_Rect dst;
-	dst.x = x;
-	dst.y = y;
-	dst.w = img->Width;
-	dst.h = img->Height;
+	dst.x = x;	dst.y = y;	dst.w = img->Width;	dst.h = img->Height;
+	SDL_RenderCopy(Rend, img->Texture, &src, &dst);
+}
+void SGWindow::DrawTile(SGImage* img, int tileW, int tileH, int srcX, int srcY, int dstX, int dstY) {
+	SDL_Rect src;
+	src.x = srcX;	src.y = srcY;	src.w = tileW;	src.h = tileH;
+	SDL_Rect dst;
+	dst.x = dstX;	dst.y = dstY;	dst.w = tileW;	dst.h = tileH;
 	SDL_RenderCopy(Rend, img->Texture, &src, &dst);
 }
 //=============================================================================

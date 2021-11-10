@@ -93,6 +93,7 @@ namespace SpriteGameLang
                 cmd = srcLine;
             }
 
+            cmd = cmd.Trim();
             return CmdTranslator.Translate(srcLine, cmd, args);
         }
 
