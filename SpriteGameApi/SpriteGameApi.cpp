@@ -19,7 +19,31 @@ class SGWindow;
 class SGImage;
 class SGImagePool;
 class SGTileset;
+class SGSprite;
 
+/// SGSprite..
+class SGSprite {
+public:
+	SGSprite();
+	~SGSprite();
+
+	std::string Tileset;
+	std::vector<std::string> Frames;
+	int X;
+	int Y;
+	int Z;
+};
+/// SGSpriteLayer..
+class SGSpriteLayer {
+public:
+	SGSpriteLayer();
+	~SGSpriteLayer();
+
+	std::vector<SGSprite*> Sprites;
+	int X;
+	int Y;
+	int Z;
+};
 /// SGPosition..
 class SGPosition {
 public:

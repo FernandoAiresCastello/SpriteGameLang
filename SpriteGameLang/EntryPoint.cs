@@ -12,6 +12,14 @@ namespace SpriteGameLang
         [STAThread]
         static void Main(string[] args)
         {
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+            CompilerWindow wnd = new CompilerWindow();
+            Application.Run(wnd);
+        }
+
+        private static void Compile(string[] args)
+        {
             Log("*** Sprite Game Compiler ***");
 
             if (args.Length != 2)
@@ -30,19 +38,19 @@ namespace SpriteGameLang
 
             try
             {
-                string exeFile = args[1];
-                string cppFile = "__generated__.cpp";
+                string generatedExeFile = args[1];
+                string generatedCppFile = "__generated__.cpp";
 
-                File.Delete(exeFile);
-                File.Delete(cppFile);
+                File.Delete(generatedExeFile);
+                File.Delete(generatedCppFile);
 
                 string[] srcLines = File.ReadAllLines(srcFile);
                 Compiler compiler = new Compiler();
 
-                bool ok = compiler.CompileSglToCpp(srcLines, cppFile);
+                bool ok = compiler.CompileSglToCpp(srcLines, generatedCppFile);
                 if (ok)
                 {
-                    ok = compiler.CompileCppToExe(cppFile, exeFile);
+                    ok = compiler.CompileCppToExe(generatedCppFile, generatedExeFile, null);
                     if (ok)
                     {
                         //File.Delete(cppFile);

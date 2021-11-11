@@ -13,6 +13,7 @@ namespace SpriteGameLang
         private readonly string TemplateCpp;
         private readonly string BeginMain = "// _BEGIN_MAIN_";
         private readonly CommandTranslator CmdTranslator = new CommandTranslator();
+        private List<string> Output;
 
         public Compiler()
         {
@@ -21,8 +22,6 @@ namespace SpriteGameLang
 
         public bool CompileSglToCpp(string[] srcLines, string outputFileName)
         {
-            Log("Compiling SGL to C++...");
-
             srcLines = SplitLines(srcLines);
             StringBuilder main = new StringBuilder();
             foreach (string src in srcLines)
@@ -32,14 +31,13 @@ namespace SpriteGameLang
             output = output.Replace(BeginMain, main.ToString());
             output = output.Trim() + Environment.NewLine;
             File.WriteAllText(outputFileName, output);
-            Log("Compiled OK!");
 
             return true;
         }
 
-        public bool CompileCppToExe(string cppFile, string exeFile)
+        public bool CompileCppToExe(string cppFile, string exeFile, List<string> output)
         {
-            Log("Compiling C++ to EXE...");
+            Output = output;
 
             ProcessStartInfo psi = new ProcessStartInfo("mingw/bin/g++.exe");
             psi.Arguments = string.Format(
@@ -51,20 +49,19 @@ namespace SpriteGameLang
             psi.RedirectStandardOutput = true;
 
             Process proc = Process.Start(psi);
+            proc.OutputDataReceived += new DataReceivedEventHandler(OutputHandler);
+            proc.ErrorDataReceived += new DataReceivedEventHandler(OutputHandler);
+            proc.BeginOutputReadLine();
+            proc.BeginErrorReadLine();
             proc.WaitForExit();
 
-            string stdout = proc.StandardOutput.ReadToEnd().Replace("\n", Environment.NewLine);
-            string stderr = proc.StandardError.ReadToEnd().Replace("\n", Environment.NewLine);
-
-            if (!string.IsNullOrWhiteSpace(stdout))
-                Log("g++: " + stdout);
-            if (!string.IsNullOrWhiteSpace(stderr))
-                Log("g++: " + stderr);
-
-            if (proc.ExitCode == 0)
-                Log("Compiled OK!");
-
             return proc.ExitCode == 0;
+        }
+
+        private void OutputHandler(object sendingProcess, DataReceivedEventArgs outLine)
+        {
+            if (Output != null)
+                Output.Add(outLine.Data);
         }
 
         private string CompileLine(string srcLine)
@@ -205,11 +202,6 @@ namespace SpriteGameLang
             {
                 yield return sb.ToString().Trim();
             }
-        }
-
-        private void Log(string text)
-        {
-            Console.WriteLine(text);
         }
     }
 }
