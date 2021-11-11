@@ -85,11 +85,21 @@ namespace SpriteGameLang
 
                         File.Copy(TempExeFile, outFile);
                         Log("Generated EXE file in " + outFile);
+                        Log("Running...");
+
+                        ProcessStartInfo psi = new ProcessStartInfo(outFile);
+                        psi.WorkingDirectory = new FileInfo(outFile).DirectoryName;
+                        Process proc = new Process();
+                        proc.StartInfo = psi;
+                        proc.Start();
+                        proc.WaitForExit();
+
+                        Log("Execution finished!");
                     }
                     else
                     {
                         Log("Compilation error:");
-                        Log(string.Join(Environment.NewLine, output.ToArray()));
+                        Log(string.Join(Environment.NewLine, output.ToArray()).Trim());
                     }
                 }
             }

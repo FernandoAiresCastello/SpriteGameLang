@@ -101,6 +101,12 @@ namespace SpriteGameLang
                     "_api->DrawTile({0}, {1}, {2}, {3});",
                     args[0], args[1], args[2], args[3]));
             }
+            else if (cmd == "DWSTR")
+            {
+                cpp.Append(string.Format(
+                    "_api->DrawString({0}, {1}, {2}, {3});",
+                    args[0], args[1], args[2], args[3]));
+            }
             else
             {
                 throw new CompileError("Invalid command: " + srcLine.Trim());

@@ -186,6 +186,7 @@ public:
 	void MakeTileset(std::string idTileset, std::string idImage, int tileWidth, int tileHeight);
 	SGTileset* GetTileset(std::string id);
 	void DrawTile(std::string idTileset, int ixTile, int x, int y);
+	void DrawString(std::string idTileset, std::string text, int x, int y);
 
 	SGSystem* System = nullptr;
 	SGWindow* Window = nullptr;
@@ -277,6 +278,26 @@ void SGApiContext::DrawTile(std::string idTileset, int ixTile, int x, int y) {
 
 	Window->DrawTile(tset->Image, tset->TileWidth, tset->TileHeight, 
 		tset->GetTileXFromIndex(ixTile), tset->GetTileYFromIndex(ixTile), x, y);
+}
+void SGApiContext::DrawString(std::string idTileset, std::string text, int x, int y) {
+	SGTileset* tset = GetTileset(idTileset);
+	if (!tset)
+		return;
+
+	const int px = x;
+
+	for (auto& ch : text) {
+		if (ch == '\n') {
+			x = px;
+			y += tset->TileHeight;
+		}
+		else {
+			Window->DrawTile(tset->Image, tset->TileWidth, tset->TileHeight,
+				tset->GetTileXFromIndex(ch), tset->GetTileYFromIndex(ch), x, y);
+
+			x += tset->TileWidth;
+		}
+	}
 }
 /// SGTileset...
 SGTileset::SGTileset(SGImage* image, int tileWidth, int tileHeight) {

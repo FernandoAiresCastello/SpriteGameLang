@@ -61,7 +61,7 @@ namespace SpriteGameLang
         private void OutputHandler(object sendingProcess, DataReceivedEventArgs outLine)
         {
             if (Output != null)
-                Output.Add(outLine.Data);
+                Output.Add("\t" + outLine.Data);
         }
 
         private string CompileLine(string srcLine)
