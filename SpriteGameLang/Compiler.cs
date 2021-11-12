@@ -22,10 +22,9 @@ namespace SpriteGameLang
 
         public bool CompileSglToCpp(string[] srcLines, string outputFileName)
         {
-            srcLines = SplitLines(srcLines);
             StringBuilder main = new StringBuilder();
             foreach (string src in srcLines)
-                main.AppendLine(CompileLine(src));
+                main.AppendLine(CompileLine(src.Trim()));
 
             string output = TemplateCpp;
             output = output.Replace(BeginMain, main.ToString());

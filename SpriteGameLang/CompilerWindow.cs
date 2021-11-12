@@ -18,6 +18,10 @@ namespace SpriteGameLang
         private readonly string TempExeFile;
         private readonly string TempCppFile;
         private readonly string RecentFileList = "recent.ini";
+        private string SrcFolder;
+        private string SrcFile;
+        private string ExeFile;
+        private string FileEditorPath;
 
         public CompilerWindow()
         {
@@ -25,6 +29,7 @@ namespace SpriteGameLang
             TempFolder = Path.Combine(Application.StartupPath, "temp");
             TempExeFile = Path.Combine(TempFolder, "__generated__.exe");
             TempCppFile = Path.Combine(TempFolder, "__generated__.cpp");
+            FileEditorPath = "C:\\Program Files\\Notepad++\\notepad++.exe";
 
             if (File.Exists(RecentFileList))
                 TxtFile.Text = File.ReadAllText(RecentFileList).Trim();
@@ -41,7 +46,49 @@ namespace SpriteGameLang
 
         private void BtnCompile_Click(object sender, EventArgs e)
         {
-            Compile();
+            if (!string.IsNullOrEmpty(TxtFile.Text.Trim()))
+                Compile();
+        }
+
+        private void BtnOpenInExplorer_Click(object sender, EventArgs e)
+        {
+            if (SrcFolder != null)
+                Process.Start(SrcFolder);
+        }
+
+        private void BtnEditProgram_Click(object sender, EventArgs e)
+        {
+            if (File.Exists(SrcFile))
+                OpenInEditor(SrcFile);
+        }
+
+        private void BtnRun_Click(object sender, EventArgs e)
+        {
+            if (ExeFile != null)
+                RunCompiledExe(false);
+        }
+
+        private void BtnViewGenerated_Click(object sender, EventArgs e)
+        {
+            if (File.Exists(TempCppFile))
+                OpenInEditor(TempCppFile);
+        }
+
+        private void OpenInEditor(string file)
+        {
+            Process.Start(FileEditorPath, file);
+        }
+
+        private void RunCompiledExe(bool waitForExit)
+        {
+            ProcessStartInfo psi = new ProcessStartInfo(ExeFile);
+            SrcFolder = new FileInfo(ExeFile).DirectoryName;
+            psi.WorkingDirectory = SrcFolder;
+            Process proc = new Process();
+            proc.StartInfo = psi;
+            proc.Start();
+            if (waitForExit)
+                proc.WaitForExit();
         }
 
         private void Compile()
@@ -54,7 +101,7 @@ namespace SpriteGameLang
             {
                 File.WriteAllText(RecentFileList, TxtFile.Text);
 
-                string srcFile = TxtFile.Text.Trim();
+                SrcFile = TxtFile.Text.Trim();
 
                 Directory.CreateDirectory(TempFolder);
                 if (File.Exists(TempExeFile))
@@ -62,7 +109,7 @@ namespace SpriteGameLang
                 if (File.Exists(TempCppFile))
                     File.Delete(TempCppFile);
 
-                string[] srcLines = File.ReadAllLines(srcFile);
+                string[] srcLines = File.ReadAllLines(SrcFile);
                 Compiler compiler = new Compiler();
 
                 Log("Compiling SGL to C++...");
@@ -79,21 +126,15 @@ namespace SpriteGameLang
                     {
                         Log("Compiled OK!");
 
-                        string outFile = Path.ChangeExtension(srcFile, "exe");
-                        if (File.Exists(outFile))
-                            File.Delete(outFile);
+                        ExeFile = Path.ChangeExtension(SrcFile, "exe");
+                        if (File.Exists(ExeFile))
+                            File.Delete(ExeFile);
 
-                        File.Copy(TempExeFile, outFile);
-                        Log("Generated EXE file in " + outFile);
+                        File.Copy(TempExeFile, ExeFile);
+                        Log("Generated EXE file in " + ExeFile);
+
                         Log("Running...");
-
-                        ProcessStartInfo psi = new ProcessStartInfo(outFile);
-                        psi.WorkingDirectory = new FileInfo(outFile).DirectoryName;
-                        Process proc = new Process();
-                        proc.StartInfo = psi;
-                        proc.Start();
-                        proc.WaitForExit();
-
+                        RunCompiledExe(true);
                         Log("Execution finished!");
                     }
                     else
