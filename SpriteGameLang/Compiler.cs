@@ -83,6 +83,9 @@ namespace SpriteGameLang
             {
                 cmd = srcLine.Substring(0, ixFirstSpace).Trim();
                 args = ParseArgs(srcLine.Substring(ixFirstSpace).Trim());
+
+                if (!ValidateArgs(args))
+                    throw new CompileError("Argument parse error in: " + srcLine);
             }
             else
             {
@@ -134,6 +137,32 @@ namespace SpriteGameLang
             }
 
             return args.ToArray();
+        }
+
+        private bool ValidateArgs(string[] args)
+        {
+            foreach (string arg in args)
+            {
+                if (!IsStringLiteral(arg) && !IsIdentifier(arg) && !IsNumber(arg))
+                    return false;
+            }
+
+            return true;
+        }
+
+        private bool IsStringLiteral(string arg)
+        {
+            return arg.StartsWith("\"") && arg.EndsWith("\"");
+        }
+
+        private bool IsIdentifier(string arg)
+        {
+            return arg.StartsWith("$");
+        }
+
+        private bool IsNumber(string arg)
+        {
+            return char.IsDigit(arg[0]);
         }
 
         private string[] SplitLines(string[] srcLines)

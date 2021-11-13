@@ -6,6 +6,11 @@
 #include <map>
 #include <iostream>
 #include <fstream>
+#include <cstdarg>
+#include <sstream>
+#include <algorithm>
+#include <cctype>
+#include <bitset>
 
 /// Index..
 class SGApiContext;
@@ -20,7 +25,13 @@ class SGImage;
 class SGImagePool;
 class SGTileset;
 class SGSprite;
+struct SGVariable;
 
+/// SGVariable..
+struct SGVariable {
+	int NumberValue;
+	std::string StringValue;
+};
 /// SGSprite..
 class SGSprite {
 public:
@@ -63,6 +74,9 @@ public:
 class SGString {
 public:
 	static std::string Format(const char* fmt, ...);
+	static int ToInt(std::string str);
+	static std::string ToString(int x);
+	static std::string Skip(std::string text, int count);
 };
 /// SGFile..
 class SGFile {
@@ -170,6 +184,10 @@ public:
 	~SGApiContext();
 
 	void Test();
+	void SetVariable(std::string name, std::string value);
+	void SetVariable(std::string name, int value);
+	void SetVariablesEqual(std::string name1, std::string name2);
+	SGVariable* GetVariable(std::string name);
 	void ShowMsgBox(std::string message);
 	void Exit();
 	void SetWindowTitle(std::string title);
@@ -192,6 +210,7 @@ public:
 	SGWindow* Window = nullptr;
 	SGImagePool* ImgPool = nullptr;
 	std::map<std::string, SGTileset*> Tilesets;
+	std::map<std::string, SGVariable> Vars;
 };
 
 /// SGApiContext...
@@ -213,6 +232,32 @@ SGApiContext::~SGApiContext() {
 	Tilesets.clear();
 }
 void SGApiContext::Test() {
+}
+void SGApiContext::SetVariable(std::string name, std::string value) {
+	SGVariable var;
+	var.StringValue = value;
+	var.NumberValue = SGString::ToInt(value);
+	Vars[name] = var;
+}
+void SGApiContext::SetVariable(std::string name, int value) {
+	SGVariable var;
+	var.StringValue = SGString::ToString(value);
+	var.NumberValue = value;
+	Vars[name] = var;
+}
+void SGApiContext::SetVariablesEqual(std::string name1, std::string name2) {
+	SGVariable* varPtr = GetVariable(name2);
+	SGVariable var;
+	var.StringValue = varPtr->StringValue;
+	var.NumberValue = varPtr->NumberValue;
+	Vars[name1] = var;
+}
+SGVariable* SGApiContext::GetVariable(std::string name) {
+	if (Vars.find(name) != Vars.end())
+		return &Vars[name];
+
+	SGSystem::Abort("Undefined variable: " + name);
+	return nullptr;
 }
 void SGApiContext::ShowMsgBox(std::string message) {
 	SGUtil::ShowMsgBox("Sprite Game API", message, SGMsgBoxType::Info);
@@ -358,6 +403,30 @@ std::string SGString::Format(const char* fmt, ...) {
 	va_end(arg);
 
 	return str;
+}
+int SGString::ToInt(std::string str) {
+	int value = 0;
+
+	bool sign = str[0] == '-';
+	if (sign)
+		str = SGString::Skip(str, 1);
+
+	if (str[0] == '0' && str[1] == 'x')
+		sscanf(str.c_str(), "%x", &value);
+	else if (str[0] == '0' && str[1] == 'b')
+		value = stoi(SGString::Skip(str, 2), nullptr, 2);
+	else
+		value = atoi(str.c_str());
+
+	return sign ? -value : value;
+}
+std::string SGString::ToString(int x)
+{
+	return SGString::Format("%i", x);
+}
+std::string SGString::Skip(std::string text, int count)
+{
+	return text.substr(count);
 }
 /// SGFile...
 bool SGFile::Exists(std::string file) {
