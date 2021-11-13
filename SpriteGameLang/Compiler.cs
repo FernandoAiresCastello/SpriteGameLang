@@ -12,7 +12,7 @@ namespace SpriteGameLang
     {
         private readonly string TemplateCpp;
         private readonly string BeginMain = "// _BEGIN_MAIN_";
-        private readonly CommandTranslator CmdTranslator = new CommandTranslator();
+        private CommandTranslator CmdTranslator;
         private List<string> Output;
         
         public Compiler()
@@ -22,6 +22,7 @@ namespace SpriteGameLang
 
         public bool CompileSglToCpp(string[] srcLines, string outputFileName)
         {
+            CmdTranslator = new CommandTranslator();
             StringBuilder main = new StringBuilder();
 
             foreach (string src in srcLines)
