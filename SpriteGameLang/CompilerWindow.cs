@@ -35,6 +35,24 @@ namespace SpriteGameLang
                 TxtFile.Text = File.ReadAllText(RecentFileList).Trim();
 
             TxtFile.Select(0, 0);
+            KeyPreview = true;
+            KeyDown += CompilerWindow_KeyDown;
+        }
+
+        private void CompilerWindow_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter && e.Alt)
+            {
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                BtnCompile_Click(sender, e);
+            }
+        }
+
+        private void BtnAbout_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show(this, "SpriteGameLang\n\n2021 Developed by Fernando Aires Castello", 
+                "About SpriteGameLang", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void BtnSelect_Click(object sender, EventArgs e)
@@ -91,8 +109,18 @@ namespace SpriteGameLang
                 proc.WaitForExit();
         }
 
+        private void EnableAllFields(bool enable)
+        {
+            Cursor = enable ? Cursors.Default : Cursors.WaitCursor;
+            foreach (Control ctl in Controls)
+                ctl.Enabled = enable;
+
+            Refresh();
+        }
+
         private void Compile()
         {
+            EnableAllFields(false);
             TxtLog.Clear();
             TxtLog.Refresh();
             Log("Sprite Game Compiler");
@@ -148,6 +176,8 @@ namespace SpriteGameLang
             {
                 Log(ex.Message);
             }
+
+            EnableAllFields(true);
         }
 
         private void Log(string text)
