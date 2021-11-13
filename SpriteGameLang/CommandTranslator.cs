@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -13,28 +14,12 @@ namespace SpriteGameLang
         private string[] Args;
         private int IxArg;
 
-        private string ArgString()
+        private string Arg()
         {
             if (IxArg >= Args.Length)
                 throw new CompileError("Not enough arguments in: " + SrcCode);
 
-            string arg = Args[IxArg++];
-            if (arg.StartsWith("$"))
-                arg = string.Format("_api->GetVariable(\"{0}\")->StringValue", arg.Substring(1));
-
-            return arg;
-        }
-
-        private string ArgNumber()
-        {
-            if (IxArg >= Args.Length)
-                throw new CompileError("Not enough arguments in: " + SrcCode);
-
-            string arg = Args[IxArg++];
-            if (arg.StartsWith("$"))
-                arg = string.Format("_api->GetVariable(\"{0}\")->NumberValue", arg.Substring(1));
-
-            return arg;
+            return Args[IxArg++];
         }
 
         public string Translate(string srcCode, string cmd, string[] args)
@@ -52,36 +37,15 @@ namespace SpriteGameLang
             }
             else if (cmd == "SET")
             {
-                bool invalid = false;
-                if (!args[0].StartsWith("$"))
-                    invalid = true;
-                args[0] = args[0].Substring(1);
-                if (args[0] == string.Empty)
-                    invalid = true;
-
-                if (args[1].StartsWith("$"))
-                {
-                    args[1] = args[1].Substring(1);
-                    if (args[1] == string.Empty)
-                        throw new CompileError("Invalid variable identifier in: " + SrcCode);
-                    else
-                        cpp.Append(string.Format("_api->SetVariablesEqual(\"{0}\", \"{1}\");", args[0], args[1]));
-                }
-                else
-                {
-                    if (invalid)
-                        throw new CompileError("Invalid variable identifier in: " + SrcCode);
-
-                    cpp.Append(string.Format(
-                        "_api->SetVariable(\"{0}\", {1});",
-                        args[0], args[1]));
-                }
+                cpp.Append(string.Format(
+                    "auto {0} = {1};",
+                    Arg(), Arg()));
             }
             else if (cmd == "MSGBOX")
             {
                 cpp.Append(string.Format(
                     "_api->ShowMsgBox({0});",
-                    ArgString()));
+                    Arg()));
             }
             else if (cmd == "EXIT")
             {
@@ -91,13 +55,13 @@ namespace SpriteGameLang
             {
                 cpp.Append(string.Format(
                     "_api->SetWindowTitle({0});",
-                    ArgString()));
+                    Arg()));
             }
             else if (cmd == "WINDOW")
             {
                 cpp.Append(string.Format(
                     "_api->OpenWindow({0}, {1}, {2}, {3});",
-                    ArgNumber(), ArgNumber(), ArgNumber(), ArgNumber()));
+                    Arg(), Arg(), Arg(), Arg()));
             }
             else if (cmd == "HALT")
             {
@@ -116,19 +80,19 @@ namespace SpriteGameLang
             {
                 cpp.Append(string.Format(
                     "_api->SetTransparencyKey({0});",
-                    ArgNumber()));
+                    Arg()));
             }
             else if (cmd == "ROOT")
             {
                 cpp.Append(string.Format(
                     "_api->SetFileRoot({0});",
-                    ArgString()));
+                    Arg()));
             }
             else if (cmd == "LDIMG")
             {
                 cpp.Append(string.Format(
                     "_api->LoadImageFile({0}, {1});",
-                   ArgString(), ArgString()));
+                   Arg(), Arg()));
             }
             else if (cmd == "CLS")
             {
@@ -142,31 +106,31 @@ namespace SpriteGameLang
             {
                 cpp.Append(string.Format(
                     "_api->SetWindowBackColor({0});",
-                    ArgNumber()));
+                    Arg()));
             }
             else if (cmd == "DWIMG")
             {
                 cpp.Append(string.Format(
                     "_api->DrawImage({0}, {1}, {2});",
-                   ArgString(), ArgNumber(), ArgNumber()));
+                   Arg(), Arg(), Arg()));
             }
             else if (cmd == "TILES")
             {
                 cpp.Append(string.Format(
                     "_api->MakeTileset({0}, {1}, {2}, {3});",
-                    ArgString(), ArgString(), ArgNumber(), ArgNumber()));
+                    Arg(), Arg(), Arg(), Arg()));
             }
             else if (cmd == "DWTILE")
             {
                 cpp.Append(string.Format(
                     "_api->DrawTile({0}, {1}, {2}, {3});",
-                    ArgString(), ArgNumber(), ArgNumber(), ArgNumber()));
+                    Arg(), Arg(), Arg(), Arg()));
             }
             else if (cmd == "DWSTR")
             {
                 cpp.Append(string.Format(
                     "_api->DrawString({0}, {1}, {2}, {3});",
-                    ArgString(), ArgString(), ArgNumber(), ArgNumber()));
+                    Arg(), Arg(), Arg(), Arg()));
             }
             else
             {

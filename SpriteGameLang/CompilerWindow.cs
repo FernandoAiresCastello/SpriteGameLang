@@ -95,7 +95,7 @@ namespace SpriteGameLang
         {
             TxtLog.Clear();
             TxtLog.Refresh();
-            Log("*** Sprite Game Compiler ***");
+            Log("Sprite Game Compiler");
 
             try
             {

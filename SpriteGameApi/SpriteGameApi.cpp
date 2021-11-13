@@ -628,10 +628,9 @@ SGApiContext* _api = nullptr;
 
 int main(int argc, char* argv[]) {
 
-	_api = new SGApiContext();
-
+_api = new SGApiContext();
 // _BEGIN_MAIN_
+delete _api;
+return 0;
 
-	delete _api;
-	return 0;
 }

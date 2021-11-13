@@ -14,7 +14,7 @@ namespace SpriteGameLang
         private readonly string BeginMain = "// _BEGIN_MAIN_";
         private readonly CommandTranslator CmdTranslator = new CommandTranslator();
         private List<string> Output;
-
+        
         public Compiler()
         {
             TemplateCpp = File.ReadAllText("SpriteGameApi.cpp");
@@ -23,12 +23,16 @@ namespace SpriteGameLang
         public bool CompileSglToCpp(string[] srcLines, string outputFileName)
         {
             StringBuilder main = new StringBuilder();
+
             foreach (string src in srcLines)
-                main.AppendLine(CompileLine(src.Trim()));
+            {
+                string cpp = CompileLine(src.Trim()).Trim();
+                if (cpp != string.Empty)
+                    main.AppendLine(cpp);
+            }
 
             string output = TemplateCpp;
-            output = output.Replace(BeginMain, main.ToString());
-            output = output.Trim() + Environment.NewLine;
+            output = output.Replace(BeginMain, main.ToString().Trim()).Trim();
             File.WriteAllText(outputFileName, output);
 
             return true;
@@ -73,7 +77,7 @@ namespace SpriteGameLang
             if (string.IsNullOrEmpty(srcLine))
                 return srcLine;
             if (srcLine.StartsWith(";"))
-                return "//" + srcLine.Substring(1);
+                return string.Empty;
 
             string cmd = null;
             string[] args = null;
@@ -82,10 +86,7 @@ namespace SpriteGameLang
             if (ixFirstSpace > 0)
             {
                 cmd = srcLine.Substring(0, ixFirstSpace).Trim();
-                args = ParseArgs(srcLine.Substring(ixFirstSpace).Trim());
-
-                if (!ValidateArgs(args))
-                    throw new CompileError("Argument parse error in: " + srcLine);
+                args = ParseArgs(srcLine, srcLine.Substring(ixFirstSpace).Trim());
             }
             else
             {
@@ -96,140 +97,41 @@ namespace SpriteGameLang
             return CmdTranslator.Translate(srcLine, cmd, args);
         }
 
-        public string JoinArgs(string[] args, int initialIndex = 0)
-        {
-            if (initialIndex > 0)
-                return string.Join(" ", args, initialIndex, args.Length - 1).Trim();
-            else
-                return string.Join(" ", args).Trim();
-        }
-
-        public string[] ParseArgs(string src)
+        public string[] ParseArgs(string srcLine, string srcArgs)
         {
             List<string> args = new List<string>();
-            bool quote = false;
-            StringBuilder sb = new StringBuilder();
+            StringBuilder arg = new StringBuilder();
+            bool insideStringLiteral = false;
 
-            for (int i = 0; i < src.Length; i++)
+            for (int i = 0; i < srcArgs.Length; i++)
             {
-                char ch = src[i];
+                char ch = srcArgs[i];
 
                 if (ch == '"')
                 {
-                    quote = !quote;
+                    insideStringLiteral = !insideStringLiteral;
+                    arg.Append(ch);
+                    if (i == srcArgs.Length - 1)
+                        args.Add(arg.ToString().Trim());
                 }
+                else if (ch == ',' && !insideStringLiteral)
+                {
+                    string completeArg = arg.ToString().Trim();
+                    if (completeArg == string.Empty)
+                        throw new CompileError("Argument parse error in: " + srcLine);
 
-                if ((ch != ',' && ch != ';') || quote)
-                {
-                    sb.Append(ch);
+                    args.Add(completeArg);
+                    arg.Clear();
                 }
-
-                if (ch == ';' && !quote)
+                else
                 {
-                    args.Add(sb.ToString().Trim());
-                    break;
-                }
-                else if ((ch == ',' && !quote) || i == src.Length - 1)
-                {
-                    args.Add(sb.ToString().Trim());
-                    sb.Clear();
+                    arg.Append(ch);
+                    if (i == srcArgs.Length - 1)
+                        args.Add(arg.ToString().Trim());
                 }
             }
 
             return args.ToArray();
-        }
-
-        private bool ValidateArgs(string[] args)
-        {
-            foreach (string arg in args)
-            {
-                if (!IsStringLiteral(arg) && !IsIdentifier(arg) && !IsNumber(arg))
-                    return false;
-            }
-
-            return true;
-        }
-
-        private bool IsStringLiteral(string arg)
-        {
-            return arg.StartsWith("\"") && arg.EndsWith("\"");
-        }
-
-        private bool IsIdentifier(string arg)
-        {
-            return arg.StartsWith("$");
-        }
-
-        private bool IsNumber(string arg)
-        {
-            return char.IsDigit(arg[0]);
-        }
-
-        private string[] SplitLines(string[] srcLines)
-        {
-            List<string> lines = new List<string>();
-
-            foreach (string srcLine in srcLines)
-                lines.AddRange(QuotedSplit(srcLine.Trim(), ":"));
-
-            return lines.ToArray();
-        }
-
-        private IEnumerable<char> ReadNext(string str, int currentPosition, int count)
-        {
-            for (var i = 0; i < count; i++)
-            {
-                if (currentPosition + i >= str.Length)
-                {
-                    yield break;
-                }
-                else
-                {
-                    yield return str[currentPosition + i];
-                }
-            }
-        }
-
-        public IEnumerable<string> QuotedSplit(string s, string delim)
-        {
-            const char quote = '\"';
-
-            var sb = new StringBuilder(s.Length);
-            var counter = 0;
-            while (counter < s.Length)
-            {
-                // if starts with delmiter if so read ahead to see if matches
-                if (delim[0] == s[counter] &&
-                    delim.SequenceEqual(ReadNext(s, counter, delim.Length)))
-                {
-                    yield return sb.ToString();
-                    sb.Clear();
-                    counter = counter + delim.Length; // Move the counter past the delimiter 
-                }
-                // if we hit a quote read until we hit another quote or end of string
-                else if (s[counter] == quote)
-                {
-                    sb.Append(s[counter++]);
-                    while (counter < s.Length && s[counter] != quote)
-                    {
-                        sb.Append(s[counter++]);
-                    }
-                    // if not end of string then we hit a quote add the quote
-                    if (counter < s.Length)
-                    {
-                        sb.Append(s[counter++]);
-                    }
-                }
-                else
-                {
-                    sb.Append(s[counter++]);
-                }
-            }
-
-            if (sb.Length > 0)
-            {
-                yield return sb.ToString().Trim();
-            }
         }
     }
 }
