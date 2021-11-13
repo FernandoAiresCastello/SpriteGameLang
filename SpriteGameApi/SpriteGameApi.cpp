@@ -32,6 +32,8 @@ class SGLayer {
 public:
 	bool Enabled = true;
 	std::vector<SGSprite> Sprites;
+	int ScrollX = 0;
+	int ScrollY = 0;
 
 	void Clear();
 	void AddSprite(SGImage* img, int x, int y);
@@ -135,8 +137,10 @@ public:
 	SDL_Renderer* GetRenderer();
 	void SetFullscreen(bool full);
 	void ToggleFullscreen();
+	void AssertLayerIndex(int index);
 	void SelectLayer(int index);
 	void EnableLayer(int index, bool enable);
+	void ScrollLayerToPoint(int index, int x, int y);
 	void DrawImage(SGImage* img, int x, int y);
 	void DrawTile(SGImage* img, int tileW, int tileH, int srcX, int srcY, int dstX, int dstY);
 
@@ -194,6 +198,7 @@ public:
 	SGTileset* GetTileset(std::string id);
 	void SelectLayer(int index);
 	void EnableLayer(int index, bool enable);
+	void ScrollLayerToPoint(int index, int x, int y);
 	void DrawImage(std::string id, int x, int y);
 	void DrawTile(std::string idTileset, int ixTile, int x, int y);
 	void DrawString(std::string idTileset, std::string text, int x, int y);
@@ -269,6 +274,9 @@ void SGApiContext::SelectLayer(int index) {
 }
 void SGApiContext::EnableLayer(int index, bool enable) {
 	Window->EnableLayer(index, enable);
+}
+void SGApiContext::ScrollLayerToPoint(int index, int x, int y) {
+	Window->ScrollLayerToPoint(index, x, y);
 }
 void SGApiContext::DrawImage(std::string id, int x, int y) {
 	SGImage* img = ImgPool->Get(id);
@@ -572,7 +580,12 @@ void SGWindow::Update() {
 	for (auto& layer : Layers) {
 		if (layer.Enabled) {
 			for (auto& sprite : layer.Sprites) {
-				SDL_RenderCopy(Rend, sprite.Image->Texture, &sprite.Src, &sprite.Dst);
+				SDL_Rect dst;
+				dst.x = sprite.Dst.x + layer.ScrollX;
+				dst.y = sprite.Dst.y + layer.ScrollY;
+				dst.w = sprite.Dst.w;
+				dst.h = sprite.Dst.h;
+				SDL_RenderCopy(Rend, sprite.Image->Texture, &sprite.Src, &dst);
 			}
 		}
 	}
@@ -598,19 +611,22 @@ void SGWindow::ToggleFullscreen() {
 	SDL_ShowCursor(isFullscreen);
 	Update();
 }
-void SGWindow::SelectLayer(int index) {
-	if (index < 0 || index >= Layers.size()) {
+void SGWindow::AssertLayerIndex(int index) {
+	if (index < 0 || index >= Layers.size())
 		SGSystem::Abort(SGString::Format("Layer index out of range: %i", index));
-		return;
-	}
+}
+void SGWindow::SelectLayer(int index) {
+	AssertLayerIndex(index);
 	SelectedLayer = index;
 }
 void SGWindow::EnableLayer(int index, bool enable) {
-	if (index < 0 || index >= Layers.size()) {
-		SGSystem::Abort(SGString::Format("Layer index out of range: %i", index));
-		return;
-	}
+	AssertLayerIndex(index);
 	Layers[index].Enabled = enable;
+}
+void SGWindow::ScrollLayerToPoint(int index, int x, int y) {
+	AssertLayerIndex(index);
+	Layers[index].ScrollX = x;
+	Layers[index].ScrollY = y;
 }
 void SGWindow::DrawImage(SGImage* img, int x, int y) {
 	Layers[SelectedLayer].AddSprite(img, x, y);

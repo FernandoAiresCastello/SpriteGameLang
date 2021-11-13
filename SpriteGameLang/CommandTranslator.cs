@@ -155,6 +155,12 @@ namespace SpriteGameLang
                     "_api->EnableLayer({0}, true);",
                     Arg()));
             }
+            else if (cmd == "SCRL")
+            {
+                cpp.Append(string.Format(
+                    "_api->ScrollLayerToPoint({0}, {1}, {2});",
+                    Arg(), Arg(), Arg()));
+            }
             else
             {
                 throw new CompileError("Invalid command in: " + SrcCode);
