@@ -63,6 +63,11 @@ namespace SpriteGameLang
                     "_api->OpenWindow({0}, {1}, {2}, {3});",
                     Arg(), Arg(), Arg(), Arg()));
             }
+            else if (cmd == "FULLSCR")
+            {
+                cpp.Append(string.Format("_api->SetFullscreen({0});", 
+                    Arg()));
+            }
             else if (cmd == "HALT")
             {
                 cpp.Append("_api->Halt();");
@@ -131,6 +136,24 @@ namespace SpriteGameLang
                 cpp.Append(string.Format(
                     "_api->DrawString({0}, {1}, {2}, {3});",
                     Arg(), Arg(), Arg(), Arg()));
+            }
+            else if (cmd == "LAYER")
+            {
+                cpp.Append(string.Format(
+                    "_api->SelectLayer({0});",
+                    Arg()));
+            }
+            else if (cmd == "DISL")
+            {
+                cpp.Append(string.Format(
+                    "_api->EnableLayer({0}, false);",
+                    Arg()));
+            }
+            else if (cmd == "ENAL")
+            {
+                cpp.Append(string.Format(
+                    "_api->EnableLayer({0}, true);",
+                    Arg()));
             }
             else
             {

@@ -25,35 +25,24 @@ class SGImage;
 class SGImagePool;
 class SGTileset;
 class SGSprite;
-struct SGVariable;
+class SGLayer;
 
-/// SGVariable..
-struct SGVariable {
-	int NumberValue;
-	std::string StringValue;
+/// SGLayer..
+class SGLayer {
+public:
+	bool Enabled = true;
+	std::vector<SGSprite> Sprites;
+
+	void Clear();
+	void AddSprite(SGImage* img, int x, int y);
+	void AddSprite(SGImage* img, int tileW, int tileH, int srcX, int srcY, int dstX, int dstY);
 };
 /// SGSprite..
 class SGSprite {
 public:
-	SGSprite();
-	~SGSprite();
-
-	std::string Tileset;
-	std::vector<std::string> Frames;
-	int X;
-	int Y;
-	int Z;
-};
-/// SGSpriteLayer..
-class SGSpriteLayer {
-public:
-	SGSpriteLayer();
-	~SGSpriteLayer();
-
-	std::vector<SGSprite*> Sprites;
-	int X;
-	int Y;
-	int Z;
+	SGImage* Image;
+	SDL_Rect Src;
+	SDL_Rect Dst;
 };
 /// SGPosition..
 class SGPosition {
@@ -137,8 +126,8 @@ public:
 	SGWindow();
 	~SGWindow();
 
-	void Open(int hRes, int vRes, int sizeMultiplier, bool full);
-	void Open(int hRes, int vRes, int hSize, int vSize, bool full);
+	void Open(int hRes, int vRes, int layers, int sizeMultiplier);
+	void Open(int hRes, int vRes, int layers, int hSize, int vSize);
 	void SetTitle(std::string title);
 	void Close();
 	void Clear();
@@ -146,6 +135,8 @@ public:
 	SDL_Renderer* GetRenderer();
 	void SetFullscreen(bool full);
 	void ToggleFullscreen();
+	void SelectLayer(int index);
+	void EnableLayer(int index, bool enable);
 	void DrawImage(SGImage* img, int x, int y);
 	void DrawTile(SGImage* img, int tileW, int tileH, int srcX, int srcY, int dstX, int dstY);
 
@@ -160,6 +151,8 @@ private:
 	int WndHeight = 0;
 	bool Full = false;
 	std::string Title = "";
+	int SelectedLayer = 0;
+	std::vector<SGLayer> Layers;
 };
 /// SGImagePool..
 class SGImagePool {
@@ -184,14 +177,11 @@ public:
 	~SGApiContext();
 
 	void Test();
-	void SetVariable(std::string name, std::string value);
-	void SetVariable(std::string name, int value);
-	void SetVariablesEqual(std::string name1, std::string name2);
-	SGVariable* GetVariable(std::string name);
 	void ShowMsgBox(std::string message);
 	void Exit();
 	void SetWindowTitle(std::string title);
-	void OpenWindow(int hRes, int vRes, int sizeMultiplier, bool full);
+	void OpenWindow(int hRes, int vRes, int layers, int sizeMultiplier);
+	void SetFullscreen(bool full);
 	void Halt();
 	void SetFileRoot(std::string path);
 	void LoadImageFile(std::string id, std::string file);
@@ -200,9 +190,11 @@ public:
 	void SetTransparencyKey(int rgb);
 	void SetWindowBackColor(int rgb);
 	void ClearWindow();
-	void DrawImage(std::string id, int x, int y);
 	void MakeTileset(std::string idTileset, std::string idImage, int tileWidth, int tileHeight);
 	SGTileset* GetTileset(std::string id);
+	void SelectLayer(int index);
+	void EnableLayer(int index, bool enable);
+	void DrawImage(std::string id, int x, int y);
 	void DrawTile(std::string idTileset, int ixTile, int x, int y);
 	void DrawString(std::string idTileset, std::string text, int x, int y);
 
@@ -210,7 +202,6 @@ public:
 	SGWindow* Window = nullptr;
 	SGImagePool* ImgPool = nullptr;
 	std::map<std::string, SGTileset*> Tilesets;
-	std::map<std::string, SGVariable> Vars;
 };
 
 /// SGApiContext...
@@ -233,32 +224,6 @@ SGApiContext::~SGApiContext() {
 }
 void SGApiContext::Test() {
 }
-void SGApiContext::SetVariable(std::string name, std::string value) {
-	SGVariable var;
-	var.StringValue = value;
-	var.NumberValue = SGString::ToInt(value);
-	Vars[name] = var;
-}
-void SGApiContext::SetVariable(std::string name, int value) {
-	SGVariable var;
-	var.StringValue = SGString::ToString(value);
-	var.NumberValue = value;
-	Vars[name] = var;
-}
-void SGApiContext::SetVariablesEqual(std::string name1, std::string name2) {
-	SGVariable* varPtr = GetVariable(name2);
-	SGVariable var;
-	var.StringValue = varPtr->StringValue;
-	var.NumberValue = varPtr->NumberValue;
-	Vars[name1] = var;
-}
-SGVariable* SGApiContext::GetVariable(std::string name) {
-	if (Vars.find(name) != Vars.end())
-		return &Vars[name];
-
-	SGSystem::Abort("Undefined variable: " + name);
-	return nullptr;
-}
 void SGApiContext::ShowMsgBox(std::string message) {
 	SGUtil::ShowMsgBox("Sprite Game API", message, SGMsgBoxType::Info);
 }
@@ -268,9 +233,12 @@ void SGApiContext::Exit() {
 void SGApiContext::SetWindowTitle(std::string title) {
 	Window->SetTitle(title);
 }
-void SGApiContext::OpenWindow(int hRes, int vRes, int sizeMultiplier, bool full) {
-	Window->Open(hRes, vRes, sizeMultiplier, full);
+void SGApiContext::OpenWindow(int hRes, int vRes, int layers, int sizeMultiplier) {
+	Window->Open(hRes, vRes, layers, sizeMultiplier);
 	ImgPool->SetRenderer(Window->GetRenderer());
+}
+void SGApiContext::SetFullscreen(bool full) {
+	Window->SetFullscreen(full);
 }
 void SGApiContext::Halt() {
 	System->Halt();
@@ -295,6 +263,12 @@ void SGApiContext::SetWindowBackColor(int rgb) {
 }
 void SGApiContext::ClearWindow() {
 	Window->Clear();
+}
+void SGApiContext::SelectLayer(int index) {
+	Window->SelectLayer(index);
+}
+void SGApiContext::EnableLayer(int index, bool enable) {
+	Window->EnableLayer(index, enable);
 }
 void SGApiContext::DrawImage(std::string id, int x, int y) {
 	SGImage* img = ImgPool->Get(id);
@@ -539,28 +513,35 @@ SGWindow::SGWindow() {
 SGWindow::~SGWindow() {
 	Close();
 };
-void SGWindow::Open(int hRes, int vRes, int sizeMultiplier, bool full) {
+void SGWindow::Open(int hRes, int vRes, int layers, int sizeMultiplier) {
 	sizeMultiplier++;
-	Open(hRes, vRes, sizeMultiplier * hRes, sizeMultiplier * vRes, full);
+	Open(hRes, vRes, layers, sizeMultiplier * hRes, sizeMultiplier * vRes);
 }
-void SGWindow::Open(int hRes, int vRes, int hSize, int vSize, bool full) {
+void SGWindow::Open(int hRes, int vRes, int layers, int hSize, int vSize) {
+	if (layers < 0 || layers > 100) {
+		SGSystem::Abort(SGString::Format("Invalid layer count: %i", layers));
+		return;
+	}
+
 	ResWidth = hRes;
 	ResHeight = vRes;
 	WndWidth = hSize;
 	WndHeight = vSize;
-	Full = full;
-
+	Full = false;
+	
 	SDL_SetHint(SDL_HINT_RENDER_DRIVER, "direct3d");
 	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
 
 	Wnd = SDL_CreateWindow("",
-		SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-		WndWidth, WndHeight, Full ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
+		SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WndWidth, WndHeight, 0);
 
 	Rend = SDL_CreateRenderer(Wnd, -1,
 		SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
 
 	SDL_RenderSetLogicalSize(Rend, hRes, vRes);
+
+	for (int i = 0; i < layers; i++)
+		Layers.push_back(SGLayer());
 
 	Clear();
 	Update();
@@ -587,6 +568,14 @@ void SGWindow::Clear() {
 	SDL_RenderClear(Rend);
 }
 void SGWindow::Update() {
+	Clear();
+	for (auto& layer : Layers) {
+		if (layer.Enabled) {
+			for (auto& sprite : layer.Sprites) {
+				SDL_RenderCopy(Rend, sprite.Image->Texture, &sprite.Src, &sprite.Dst);
+			}
+		}
+	}
 	SDL_RenderPresent(Rend);
 }
 SDL_Renderer* SGWindow::GetRenderer() {
@@ -609,28 +598,58 @@ void SGWindow::ToggleFullscreen() {
 	SDL_ShowCursor(isFullscreen);
 	Update();
 }
+void SGWindow::SelectLayer(int index) {
+	if (index < 0 || index >= Layers.size()) {
+		SGSystem::Abort(SGString::Format("Layer index out of range: %i", index));
+		return;
+	}
+	SelectedLayer = index;
+}
+void SGWindow::EnableLayer(int index, bool enable) {
+	if (index < 0 || index >= Layers.size()) {
+		SGSystem::Abort(SGString::Format("Layer index out of range: %i", index));
+		return;
+	}
+	Layers[index].Enabled = enable;
+}
 void SGWindow::DrawImage(SGImage* img, int x, int y) {
+	Layers[SelectedLayer].AddSprite(img, x, y);
+}
+void SGWindow::DrawTile(SGImage* img, int tileW, int tileH, int srcX, int srcY, int dstX, int dstY) {
+	Layers[SelectedLayer].AddSprite(img, tileW, tileH, srcX, srcY, dstX, dstY);
+}
+/// SGLayer...
+void SGLayer::Clear() {
+	Sprites.clear();
+}
+void SGLayer::AddSprite(SGImage* img, int x, int y) {
 	SDL_Rect src;
 	src.x = 0;	src.y = 0;	src.w = img->Width;	src.h = img->Height;
 	SDL_Rect dst;
 	dst.x = x;	dst.y = y;	dst.w = img->Width;	dst.h = img->Height;
-	SDL_RenderCopy(Rend, img->Texture, &src, &dst);
+	SGSprite sprite;
+	sprite.Image = img;
+	sprite.Src = src;
+	sprite.Dst = dst;
+	Sprites.push_back(sprite);
 }
-void SGWindow::DrawTile(SGImage* img, int tileW, int tileH, int srcX, int srcY, int dstX, int dstY) {
+void SGLayer::AddSprite(SGImage* img, int tileW, int tileH, int srcX, int srcY, int dstX, int dstY) {
 	SDL_Rect src;
 	src.x = srcX;	src.y = srcY;	src.w = tileW;	src.h = tileH;
 	SDL_Rect dst;
 	dst.x = dstX;	dst.y = dstY;	dst.w = tileW;	dst.h = tileH;
-	SDL_RenderCopy(Rend, img->Texture, &src, &dst);
+	SGSprite sprite;
+	sprite.Image = img;
+	sprite.Src = src;
+	sprite.Dst = dst;
+	Sprites.push_back(sprite);
 }
 /// Main...
 SGApiContext* _api = nullptr;
 
 int main(int argc, char* argv[]) {
-
 _api = new SGApiContext();
 // _BEGIN_MAIN_
 delete _api;
 return 0;
-
 }
