@@ -74,7 +74,7 @@ namespace SpriteGameLang
             }
             else if (cmd == "WHILE")
             {
-                cpp.AppendLine(string.Format("while({0}) {{", args[0]));
+                cpp.AppendLine(string.Format("while ({0}) {{", args[0]));
                 cpp.Append("_api->ProcessGlobalEvents();");
             }
             else if (cmd == "LOOP")
@@ -85,8 +85,8 @@ namespace SpriteGameLang
             else if (cmd == "FOR")
             {
                 cpp.AppendLine(string.Format("for (int {0} = {1}; {2}; {0} += {3}) {{", args[0], args[1], args[2], args[3]));
-                cpp.AppendLine(string.Format("_api->SetVariable(\"{0}\", {0});", args[0]));
-                cpp.Append("_api->ProcessGlobalEvents();");
+                cpp.AppendLine("_api->ProcessGlobalEvents();");
+                cpp.Append(string.Format("_api->SetVariable(\"{0}\", {0});", args[0]));
             }
             else if (cmd == "END")
             {
@@ -151,6 +151,10 @@ namespace SpriteGameLang
             else if (cmd == "SCRL")
             {
                 cpp.Append("_api->ScrollLayerToPoint();");
+            }
+            else if (cmd == "DWRECT")
+            {
+                cpp.Append("_api->DrawRectangle();");
             }
             else
             {

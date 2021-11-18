@@ -27,6 +27,18 @@ class SGTileset;
 class SGSprite;
 class SGParameter;
 class SGVariable;
+class SGRectangle;
+
+/// SGRectangle..
+class SGRectangle {
+public:
+	int X = 0;
+	int Y = 0;
+	int Width = 0;
+	int Height = 0;
+	int Color = 0;
+	int ColorAlpha = 0;
+};
 /// SGVariable..
 class SGVariable {
 public:
@@ -47,12 +59,14 @@ class SGLayer {
 public:
 	bool Enabled = true;
 	std::vector<SGSprite> Sprites;
+	std::vector<SGRectangle> Rects;
 	int ScrollX = 0;
 	int ScrollY = 0;
 
 	void Clear();
 	void AddSprite(SGImage* img, int x, int y);
 	void AddSprite(SGImage* img, int tileW, int tileH, int srcX, int srcY, int dstX, int dstY);
+	void AddRectangle(int x, int y, int w, int h, int color, int alpha);
 };
 /// SGSprite..
 class SGSprite {
@@ -160,6 +174,7 @@ public:
 	void DrawTile(SGImage* img, int tileW, int tileH, int srcX, int srcY, int dstX, int dstY);
 	void DeleteAllSprites();
 	void DeleteSprites(int ixLayer);
+	void DrawRectangle(int x, int y, int w, int h, int color, int alpha);
 
 	int BackColor = 0xffffff;
 
@@ -222,6 +237,7 @@ public:
 	void DrawString();
 	void IncrementVariable();
 	void DecrementVariable();
+	void DrawRectangle();
 
 	// Internals
 	void AddFunctionCallArgument(std::string arg);
@@ -446,6 +462,15 @@ void SGApiContext::IncrementVariable() {
 void SGApiContext::DecrementVariable() {
 	SGVariable* var = GetVariable(Args[0].StringValue);
 	SetVariable(var->Name, var->NumberValue - 1);
+}
+void SGApiContext::DrawRectangle() {
+	int x = Args[0].NumberValue;
+	int y = Args[1].NumberValue;
+	int w = Args[2].NumberValue;
+	int h = Args[3].NumberValue;
+	int color = Args[4].NumberValue;
+	int alpha = Args[5].NumberValue;
+	Window->DrawRectangle(x, y, w, h, color, alpha);
 }
 /// SGTileset...
 SGTileset::SGTileset(SGImage* image, int tileWidth, int tileHeight) {
@@ -698,6 +723,8 @@ void SGWindow::Clear() {
 }
 void SGWindow::Update() {
 	Clear();
+	SDL_SetRenderDrawBlendMode(Rend, SDL_BLENDMODE_BLEND);
+
 	for (auto& layer : Layers) {
 		if (layer.Enabled) {
 			for (auto& sprite : layer.Sprites) {
@@ -708,8 +735,21 @@ void SGWindow::Update() {
 				dst.h = sprite.Dst.h;
 				SDL_RenderCopy(Rend, sprite.Image->Texture, &sprite.Src, &dst);
 			}
+			for (auto& curRect : layer.Rects) {
+				SDL_Rect rect;
+				rect.x = curRect.X + layer.ScrollX;
+				rect.y = curRect.Y + layer.ScrollY;
+				rect.w = curRect.Width;
+				rect.h = curRect.Height;
+				const int r = (curRect.Color & 0xff0000) >> 16;
+				const int g = (curRect.Color & 0x00ff00) >> 8;
+				const int b = (curRect.Color & 0x0000ff);
+				SDL_SetRenderDrawColor(Rend, r, g, b, curRect.ColorAlpha);
+				SDL_RenderFillRect(Rend, &rect);
+			}
 		}
 	}
+
 	SDL_RenderPresent(Rend);
 }
 SDL_Renderer* SGWindow::GetRenderer() {
@@ -764,9 +804,13 @@ void SGWindow::DeleteSprites(int ixLayer) {
 	AssertLayerIndex(ixLayer);
 	Layers[ixLayer].Clear();
 }
+void SGWindow::DrawRectangle(int x, int y, int w, int h, int color, int alpha) {
+	Layers[SelectedLayer].AddRectangle(x, y, w, h, color, alpha);
+}
 /// SGLayer...
 void SGLayer::Clear() {
 	Sprites.clear();
+	Rects.clear();
 }
 void SGLayer::AddSprite(SGImage* img, int x, int y) {
 	SDL_Rect src;
@@ -789,6 +833,16 @@ void SGLayer::AddSprite(SGImage* img, int tileW, int tileH, int srcX, int srcY, 
 	sprite.Src = src;
 	sprite.Dst = dst;
 	Sprites.push_back(sprite);
+}
+void SGLayer::AddRectangle(int x, int y, int w, int h, int color, int alpha) {
+	SGRectangle rect;
+	rect.X = x;
+	rect.Y = y;
+	rect.Width = w;
+	rect.Height = h;
+	rect.Color = color;
+	rect.ColorAlpha = alpha;
+	Rects.push_back(rect);
 }
 /// Main...
 SGApiContext* _api = nullptr;
