@@ -25,8 +25,23 @@ class SGImage;
 class SGImagePool;
 class SGTileset;
 class SGSprite;
-class SGLayer;
-
+class SGParameter;
+class SGVariable;
+/// SGVariable..
+class SGVariable {
+public:
+	std::string Name = "";
+	std::string StringValue = "";
+	int NumberValue = 0;
+	bool BoolValue = false;
+};
+/// SGParameter..
+class SGParameter {
+public:
+	std::string StringValue = "";
+	int NumberValue = 0;
+	bool BoolValue = false;
+};
 /// SGLayer..
 class SGLayer {
 public:
@@ -143,6 +158,8 @@ public:
 	void ScrollLayerToPoint(int index, int x, int y);
 	void DrawImage(SGImage* img, int x, int y);
 	void DrawTile(SGImage* img, int tileW, int tileH, int srcX, int srcY, int dstX, int dstY);
+	void DeleteAllSprites();
+	void DeleteSprites(int ixLayer);
 
 	int BackColor = 0xffffff;
 
@@ -179,34 +196,49 @@ class SGApiContext {
 public:
 	SGApiContext();
 	~SGApiContext();
-
+	
+	// Commands
 	void Test();
-	void ShowMsgBox(std::string message);
+	void ShowMsgBox();
 	void Exit();
-	void SetWindowTitle(std::string title);
-	void OpenWindow(int hRes, int vRes, int layers, int sizeMultiplier);
-	void SetFullscreen(bool full);
+	void SetWindowTitle();
+	void OpenWindow();
+	void SetFullscreen();
 	void Halt();
-	void SetFileRoot(std::string path);
-	void LoadImageFile(std::string id, std::string file);
+	void SetFileRoot();
+	void LoadImageFile();
 	void ProcessGlobalEvents();
 	void UpdateWindow();
-	void SetTransparencyKey(int rgb);
-	void SetWindowBackColor(int rgb);
-	void ClearWindow();
-	void MakeTileset(std::string idTileset, std::string idImage, int tileWidth, int tileHeight);
-	SGTileset* GetTileset(std::string id);
-	void SelectLayer(int index);
-	void EnableLayer(int index, bool enable);
-	void ScrollLayerToPoint(int index, int x, int y);
-	void DrawImage(std::string id, int x, int y);
-	void DrawTile(std::string idTileset, int ixTile, int x, int y);
-	void DrawString(std::string idTileset, std::string text, int x, int y);
+	void SetTransparencyKey();
+	void SetWindowBackColor();
+	void DeleteAllSprites();
+	void DeleteSprites();
+	void MakeTileset();
+	void SelectLayer();
+	void EnableLayer();
+	void ScrollLayerToPoint();
+	void DrawImage();
+	void DrawTile();
+	void DrawString();
+	void IncrementVariable();
+	void DecrementVariable();
+
+	// Internals
+	void AddFunctionCallArgument(std::string arg);
+	void SetVariable(std::string name, int numberValue);
+	void SetVariable(std::string name, std::string stringValue);
+	void SetVariablesEqual(std::string name1, std::string name2);
+	SGVariable* GetVariable(std::string name);
 
 	SGSystem* System = nullptr;
 	SGWindow* Window = nullptr;
 	SGImagePool* ImgPool = nullptr;
 	std::map<std::string, SGTileset*> Tilesets;
+	std::vector<SGParameter> Args;
+	std::map<std::string, SGVariable> Vars;
+
+private:
+	SGTileset* GetTileset(std::string id);
 };
 
 /// SGApiContext...
@@ -229,29 +261,83 @@ SGApiContext::~SGApiContext() {
 }
 void SGApiContext::Test() {
 }
-void SGApiContext::ShowMsgBox(std::string message) {
-	SGUtil::ShowMsgBox("Sprite Game API", message, SGMsgBoxType::Info);
+void SGApiContext::AddFunctionCallArgument(std::string arg) {
+	SGParameter param;
+	param.NumberValue = SGString::ToInt(arg);
+	param.StringValue = arg;
+	param.BoolValue = param.NumberValue > 0;
+	Args.push_back(param);
+}
+void SGApiContext::SetVariable(std::string name, int numberValue) {
+	SGVariable var;
+	var.Name = name;
+	var.NumberValue = numberValue;
+	var.StringValue = SGString::ToString(numberValue);
+	var.BoolValue = var.NumberValue > 0;
+	Vars[name] = var;
+}
+void SGApiContext::SetVariable(std::string name, std::string stringValue) {
+	SGVariable var;
+	var.Name = name;
+	var.NumberValue = SGString::ToInt(stringValue);
+	var.StringValue = stringValue;
+	var.BoolValue = var.NumberValue > 0;
+	Vars[name] = var;
+}
+void SGApiContext::SetVariablesEqual(std::string name1, std::string name2) {
+	if (Vars.find(name2) != Vars.end()) {
+		SGVariable var1;
+		var1.Name = name1;
+		var1.NumberValue = Vars[name2].NumberValue;
+		var1.StringValue = Vars[name2].StringValue;
+		var1.BoolValue = Vars[name2].BoolValue;
+		Vars[name1] = var1;
+	}
+	else {
+		SGSystem::Abort("Undefined variable: " + name2);
+	}
+}
+SGVariable* SGApiContext::GetVariable(std::string name) {
+	if (Vars.find(name) != Vars.end()) {
+		return &Vars[name];
+	}
+	SGSystem::Abort("Undefined variable: " + name);
+	return nullptr;
+}
+void SGApiContext::ShowMsgBox() {
+	std::string message = Args[0].StringValue;
+	SGUtil::ShowMsgBox("", message, SGMsgBoxType::Info);
 }
 void SGApiContext::Exit() {
 	System->Exit();
 }
-void SGApiContext::SetWindowTitle(std::string title) {
+void SGApiContext::SetWindowTitle() {
+	std::string title = Args[0].StringValue;
 	Window->SetTitle(title);
 }
-void SGApiContext::OpenWindow(int hRes, int vRes, int layers, int sizeMultiplier) {
+void SGApiContext::OpenWindow() {
+	int hRes = Args[0].NumberValue;
+	int vRes = Args[1].NumberValue;
+	int layers = Args[2].NumberValue;
+	int sizeMultiplier = Args[3].NumberValue;
+
 	Window->Open(hRes, vRes, layers, sizeMultiplier);
 	ImgPool->SetRenderer(Window->GetRenderer());
 }
-void SGApiContext::SetFullscreen(bool full) {
+void SGApiContext::SetFullscreen() {
+	bool full = Args[0].BoolValue;
 	Window->SetFullscreen(full);
 }
 void SGApiContext::Halt() {
 	System->Halt();
 }
-void SGApiContext::SetFileRoot(std::string path) {
+void SGApiContext::SetFileRoot() {
+	std::string path = Args[0].StringValue;
 	System->SetFileRoot(path);
 }
-void SGApiContext::LoadImageFile(std::string id, std::string file) {
+void SGApiContext::LoadImageFile() {
+	std::string id = Args[0].StringValue;
+	std::string file = Args[1].StringValue;
 	ImgPool->Load(id, System->FileRoot + file);
 }
 void SGApiContext::ProcessGlobalEvents() {
@@ -260,31 +346,50 @@ void SGApiContext::ProcessGlobalEvents() {
 void SGApiContext::UpdateWindow() {
 	Window->Update();
 }
-void SGApiContext::SetTransparencyKey(int rgb) {
+void SGApiContext::SetTransparencyKey() {
+	int rgb = Args[0].NumberValue;
 	ImgPool->TransparencyKey = rgb;
 }
-void SGApiContext::SetWindowBackColor(int rgb) {
+void SGApiContext::SetWindowBackColor() {
+	int rgb = Args[0].NumberValue;
 	Window->BackColor = rgb;
 }
-void SGApiContext::ClearWindow() {
-	Window->Clear();
+void SGApiContext::DeleteAllSprites() {
+	Window->DeleteAllSprites();
 }
-void SGApiContext::SelectLayer(int index) {
+void SGApiContext::DeleteSprites() {
+	int index = Args[0].NumberValue;
+	Window->DeleteSprites(index);
+}
+void SGApiContext::SelectLayer() {
+	int index = Args[0].NumberValue;
 	Window->SelectLayer(index);
 }
-void SGApiContext::EnableLayer(int index, bool enable) {
+void SGApiContext::EnableLayer() {
+	int index = Args[0].NumberValue;
+	bool enable = Args[1].BoolValue;
 	Window->EnableLayer(index, enable);
 }
-void SGApiContext::ScrollLayerToPoint(int index, int x, int y) {
+void SGApiContext::ScrollLayerToPoint() {
+	int index = Args[0].NumberValue;
+	int x = Args[1].NumberValue;
+	int y = Args[2].NumberValue;
 	Window->ScrollLayerToPoint(index, x, y);
 }
-void SGApiContext::DrawImage(std::string id, int x, int y) {
+void SGApiContext::DrawImage() {
+	std::string id = Args[0].StringValue;
+	int x = Args[1].NumberValue;
+	int y = Args[2].NumberValue;
 	SGImage* img = ImgPool->Get(id);
 	if (img) {
 		Window->DrawImage(img, x, y);
 	}
 }
-void SGApiContext::MakeTileset(std::string idTileset, std::string idImage, int tileWidth, int tileHeight) {
+void SGApiContext::MakeTileset() {
+	std::string idTileset = Args[0].StringValue;
+	std::string idImage = Args[1].StringValue;
+	int tileWidth = Args[2].NumberValue;
+	int tileHeight = Args[3].NumberValue;
 	SGImage* img = ImgPool->Get(idImage);
 	if (img) {
 		SGTileset* tset = new SGTileset(img, tileWidth, tileHeight);
@@ -298,7 +403,11 @@ SGTileset* SGApiContext::GetTileset(std::string id) {
 	}
 	return Tilesets[id];
 }
-void SGApiContext::DrawTile(std::string idTileset, int ixTile, int x, int y) {
+void SGApiContext::DrawTile() {
+	std::string idTileset = Args[0].StringValue;
+	int ixTile = Args[1].NumberValue;
+	int x = Args[2].NumberValue;
+	int y = Args[3].NumberValue;
 	SGTileset* tset = GetTileset(idTileset);
 	if (!tset)
 		return;
@@ -306,7 +415,11 @@ void SGApiContext::DrawTile(std::string idTileset, int ixTile, int x, int y) {
 	Window->DrawTile(tset->Image, tset->TileWidth, tset->TileHeight, 
 		tset->GetTileXFromIndex(ixTile), tset->GetTileYFromIndex(ixTile), x, y);
 }
-void SGApiContext::DrawString(std::string idTileset, std::string text, int x, int y) {
+void SGApiContext::DrawString() {
+	std::string idTileset = Args[0].StringValue;
+	std::string text = Args[1].StringValue;
+	int x = Args[2].NumberValue;
+	int y = Args[3].NumberValue;
 	SGTileset* tset = GetTileset(idTileset);
 	if (!tset)
 		return;
@@ -325,6 +438,14 @@ void SGApiContext::DrawString(std::string idTileset, std::string text, int x, in
 			x += tset->TileWidth;
 		}
 	}
+}
+void SGApiContext::IncrementVariable() {
+	SGVariable* var = GetVariable(Args[0].StringValue);
+	SetVariable(var->Name, var->NumberValue + 1);
+}
+void SGApiContext::DecrementVariable() {
+	SGVariable* var = GetVariable(Args[0].StringValue);
+	SetVariable(var->Name, var->NumberValue - 1);
 }
 /// SGTileset...
 SGTileset::SGTileset(SGImage* image, int tileWidth, int tileHeight) {
@@ -511,7 +632,7 @@ void SGSystem::SetFileRoot(std::string root) {
 	FileRoot = root;
 }
 void SGSystem::Abort(std::string message) {
-	SGUtil::ShowMsgBox("Sprite Game API", message, SGMsgBoxType::Error);
+	SGUtil::ShowMsgBox("Runtime Error", message, SGMsgBoxType::Error);
 	SDL_Quit();
 	exit(0);
 }
@@ -633,6 +754,15 @@ void SGWindow::DrawImage(SGImage* img, int x, int y) {
 }
 void SGWindow::DrawTile(SGImage* img, int tileW, int tileH, int srcX, int srcY, int dstX, int dstY) {
 	Layers[SelectedLayer].AddSprite(img, tileW, tileH, srcX, srcY, dstX, dstY);
+}
+void SGWindow::DeleteAllSprites() {
+	for (auto& layer : Layers) {
+		layer.Clear();
+	}
+}
+void SGWindow::DeleteSprites(int ixLayer) {
+	AssertLayerIndex(ixLayer);
+	Layers[ixLayer].Clear();
 }
 /// SGLayer...
 void SGLayer::Clear() {

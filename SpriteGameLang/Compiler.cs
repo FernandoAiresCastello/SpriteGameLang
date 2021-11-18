@@ -31,7 +31,6 @@ namespace SpriteGameLang
             StringBuilder defs = new StringBuilder();
 
             var functions = ParseFunctions(srcLines);
-
             foreach (Function fn in functions)
             {
                 if (fn.Name != "main")
