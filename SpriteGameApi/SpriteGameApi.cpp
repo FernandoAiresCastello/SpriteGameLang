@@ -663,9 +663,13 @@ void SGLayer::AddSprite(SGImage* img, int tileW, int tileH, int srcX, int srcY, 
 /// Main...
 SGApiContext* _api = nullptr;
 
+// _BEGIN_DECLS_
+
 int main(int argc, char* argv[]) {
 _api = new SGApiContext();
 // _BEGIN_MAIN_
 delete _api;
 return 0;
 }
+
+// _BEGIN_DEFS_

@@ -42,6 +42,10 @@ namespace SpriteGameLang
             {
                 cpp.Append("_api->Test();");
             }
+            else if (cmd == "CALL")
+            {
+                cpp.Append(string.Format("{0}();", args[0]));
+            }
             else if (cmd == "VAR")
             {
                 string var = args[0];

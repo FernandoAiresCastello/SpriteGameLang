@@ -11,7 +11,9 @@ namespace SpriteGameLang
     public class Compiler
     {
         private readonly string TemplateCpp;
+        private readonly string BeginDecls = "// _BEGIN_DECLS_";
         private readonly string BeginMain = "// _BEGIN_MAIN_";
+        private readonly string BeginDefs = "// _BEGIN_DEFS_";
         private CommandTranslator CmdTranslator;
         private List<string> Output;
         
@@ -23,17 +25,39 @@ namespace SpriteGameLang
         public bool CompileSglToCpp(string[] srcLines, string outputFileName)
         {
             CmdTranslator = new CommandTranslator();
-            StringBuilder main = new StringBuilder();
 
-            foreach (string src in srcLines)
+            StringBuilder decls = new StringBuilder();
+            StringBuilder main = new StringBuilder();
+            StringBuilder defs = new StringBuilder();
+
+            var functions = ParseFunctions(srcLines);
+
+            foreach (Function fn in functions)
             {
-                string cpp = CompileLine(src.Trim()).Trim();
-                if (cpp != string.Empty)
-                    main.AppendLine(cpp);
+                if (fn.Name != "main")
+                    decls.AppendLine(string.Format("void {0}();", fn.Name));
+            }
+
+            foreach (Function fn in functions)
+            {
+                if (fn.Name == "main")
+                {
+                    foreach (string srcLine in fn.Body)
+                        main.AppendLine(CompileLine(srcLine));
+                }
+                else
+                {
+                    defs.AppendLine(string.Format("void {0}() {{", fn.Name));
+                    foreach (string srcLine in fn.Body)
+                        defs.AppendLine(CompileLine(srcLine));
+                    defs.AppendLine("}" + Environment.NewLine);
+                }
             }
 
             string output = TemplateCpp;
+            output = output.Replace(BeginDecls, decls.ToString().Trim()).Trim();
             output = output.Replace(BeginMain, main.ToString().Trim()).Trim();
+            output = output.Replace(BeginDefs, defs.ToString().Trim()).Trim();
             File.WriteAllText(outputFileName, output);
 
             return true;
@@ -66,6 +90,44 @@ namespace SpriteGameLang
         {
             if (Output != null)
                 Output.Add("\t" + outLine.Data);
+        }
+
+        private List<Function> ParseFunctions(string[] srcLines)
+        {
+            var functions = new List<Function>();
+            bool mainFound = false;
+            Function fn = null;
+
+            foreach (string src in srcLines)
+            {
+                string line = src.Trim();
+                if (line == string.Empty || line.StartsWith(";"))
+                    continue;
+
+                if (line.EndsWith(":"))
+                {
+                    string name = line.Substring(0, line.Length - 1);
+                    if (name == "main")
+                        mainFound = true;
+
+                    fn = new Function();
+                    fn.Name = name;
+                    fn.Body = new List<string>();
+                    functions.Add(fn);
+                }
+                else
+                {
+                    if (fn != null)
+                        fn.Body.Add(line);
+                    else
+                        throw new CompileError("Code found outside function");
+                }
+            }
+
+            if (!mainFound)
+                throw new CompileError("Function main is undefined");
+
+            return functions;
         }
 
         private string CompileLine(string srcLine)
