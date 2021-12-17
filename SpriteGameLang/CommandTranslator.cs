@@ -16,7 +16,8 @@ namespace SpriteGameLang
             SrcCode = srcCode;
 
             StringBuilder cpp = new StringBuilder();
-            if (cmd != "VAR" && cmd != "CALL" && cmd != "RET" && cmd != "WHILE" && cmd != "FOR" && cmd != "LOOP" && cmd != "INC" && cmd != "DEC")
+            if (cmd != "VAR" && cmd != "CALL" && cmd != "RET" && cmd != "WHILE" && cmd != "FOR" && cmd != "LOOP" && 
+                cmd != "INC" && cmd != "DEC" && cmd != "HKEY" && cmd != "IFKEY" && cmd != "IFKMOD")
                 AddArgs(cpp, args);
 
             if (cmd == "TEST")
@@ -155,6 +156,26 @@ namespace SpriteGameLang
             else if (cmd == "DWRECT")
             {
                 cpp.Append("_api->DrawRectangle();");
+            }
+            else if (cmd == "PAUSE")
+            {
+                cpp.Append("_api->Pause();");
+            }
+            else if (cmd == "WKEY")
+            {
+                cpp.Append("_api->WaitKeyPress();");
+            }
+            else if (cmd == "RDKEY")
+            {
+                cpp.Append("_api->ReadKeyboardState();");
+            }
+            else if (cmd == "IFKEY")
+            {
+                cpp.Append(string.Format("if (_api->KeyboardState[SDL_SCANCODE_{0}]) {{", args[0].ToUpper()));
+            }
+            else if (cmd == "IFKMOD")
+            {
+                cpp.Append(string.Format("if (_api->GetKeyModifiers() & {0}) {{", args[0].ToUpper()));
             }
             else
             {

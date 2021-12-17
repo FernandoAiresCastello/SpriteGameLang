@@ -112,7 +112,8 @@ public:
 	
 	void Init();
 	void Exit();
-	void ProcessGlobalEvents();
+	bool ProcessGlobalEvents();
+	bool ProcessGlobalEvents(SDL_Event* e);
 	void Halt();
 	void SetFileRoot(std::string root);
 	static void Abort(std::string message);
@@ -238,6 +239,10 @@ public:
 	void IncrementVariable();
 	void DecrementVariable();
 	void DrawRectangle();
+	void Pause();
+	void WaitKeyPress();
+	void ReadKeyboardState();
+	SDL_Keymod GetKeyModifiers();
 
 	// Internals
 	void AddFunctionCallArgument(std::string arg);
@@ -252,6 +257,7 @@ public:
 	std::map<std::string, SGTileset*> Tilesets;
 	std::vector<SGParameter> Args;
 	std::map<std::string, SGVariable> Vars;
+	const Uint8* KeyboardState = nullptr;
 
 private:
 	SGTileset* GetTileset(std::string id);
@@ -472,6 +478,32 @@ void SGApiContext::DrawRectangle() {
 	int alpha = Args[5].NumberValue;
 	Window->DrawRectangle(x, y, w, h, color, alpha);
 }
+void SGApiContext::Pause() {
+	int time = Args[0].NumberValue;
+	while (time > 0) {
+		ProcessGlobalEvents();
+		time--;
+		SDL_Delay(1);
+	}
+}
+void SGApiContext::WaitKeyPress() {
+	int key = Args[0].NumberValue;
+	while (true) {
+		SDL_Event e;
+		bool global = System->ProcessGlobalEvents(&e);
+		if (global)
+			continue;
+		if (e.type == SDL_KEYDOWN && e.key.keysym.sym == key)
+			break;
+	}
+}
+void SGApiContext::ReadKeyboardState() {
+	SDL_PumpEvents();
+	KeyboardState = SDL_GetKeyboardState(nullptr);
+}
+SDL_Keymod SGApiContext::GetKeyModifiers() {
+	return SDL_GetModState();
+}
 /// SGTileset...
 SGTileset::SGTileset(SGImage* image, int tileWidth, int tileHeight) {
 	Image = image;
@@ -633,15 +665,21 @@ void SGSystem::Exit() {
 	SDL_Quit();
 	exit(0);
 }
-void SGSystem::ProcessGlobalEvents() {
+bool SGSystem::ProcessGlobalEvents() {
 	SDL_Event e;
-	SDL_PollEvent(&e);
-	if (e.type == SDL_QUIT) {
+	return ProcessGlobalEvents(&e);
+}
+bool SGSystem::ProcessGlobalEvents(SDL_Event* e) {
+	SDL_PollEvent(e);
+	if (e->type == SDL_QUIT) {
 		Exit();
+		return true;
 	}
-	else if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_RETURN && SDL_GetModState() & KMOD_ALT) {
+	else if (e->type == SDL_KEYDOWN && e->key.keysym.sym == SDLK_RETURN && SDL_GetModState() & KMOD_ALT) {
 		Window->ToggleFullscreen();
+		return true;
 	}
+	return false;
 }
 void SGSystem::Halt() {
 	while (true) {
